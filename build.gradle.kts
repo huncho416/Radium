@@ -1,5 +1,6 @@
 import org.jetbrains.gradle.ext.settings
 import org.jetbrains.gradle.ext.taskTriggers
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     kotlin("jvm") version "2.0.20-Beta1"
@@ -21,12 +22,34 @@ repositories {
     maven("https://oss.sonatype.org/content/groups/public/") {
         name = "sonatype"
     }
+    maven {
+        url = uri("https://repo.opencollab.dev/main/")
+    }
 }
 
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     kapt("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    // Kotlin Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.4")
+    implementation("com.github.shynixn.mccoroutine:mccoroutine-velocity-api:2.22.0")
+    implementation("com.github.shynixn.mccoroutine:mccoroutine-velocity-core:2.22.0")
+
+    // Lamp Command Library
+    implementation("io.github.revxrsal:lamp.common:4.0.0-rc.12")
+    implementation("io.github.revxrsal:lamp.velocity:4.0.0-rc.12")
+    implementation("io.github.revxrsal:lamp.brigadier:4.0.0-rc.12")
+
+    implementation("org.yaml:snakeyaml:2.0")
+
+    // MongoDB Driver (Reactive Streams + Multithreading)
+    implementation("org.mongodb:mongodb-driver-reactivestreams:4.10.2")
+
+    // Redis Driver (Lettuce)
+    implementation("io.lettuce:lettuce-core:6.3.2.RELEASE")
 }
 
 tasks {
@@ -38,9 +61,24 @@ tasks {
     }
 }
 
-val targetJavaVersion = 17
+val targetJavaVersion = 21
 kotlin {
     jvmToolchain(targetJavaVersion)
+    compilerOptions {
+        javaParameters = true
+    }
+}
+
+tasks.withType<JavaCompile> {
+    // Preserve parameter names in the bytecode
+    options.compilerArgs.add("-parameters")
+}
+
+// optional: if you're using Kotlin
+tasks.withType<KotlinJvmCompile> {
+    compilerOptions {
+        javaParameters = true
+    }
 }
 
 val templateSource = file("src/main/templates")

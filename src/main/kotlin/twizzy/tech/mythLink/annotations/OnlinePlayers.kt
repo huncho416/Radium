@@ -1,4 +1,4 @@
 package twizzy.tech.mythLink.annotations
 
-class OnlinePlayers {
-}
+@Target(AnnotationTarget.VALUE_PARAMETER)
+annotation class OnlinePlayers()
