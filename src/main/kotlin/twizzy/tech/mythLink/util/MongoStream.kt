@@ -33,17 +33,12 @@ class MongoStream(val logger: ComponentLogger) {
      * This is the central point for all database initialization
      */
     fun initializeDatabases() {
-        logger.info(Component.text("Initializing all MythLink databases...", NamedTextColor.YELLOW))
-
         try {
             // Connect to the mythlink database
             val mythlinkDb = connectToDatabase()
-            logger.info(Component.text("Database initialized with ${mythlinkDb.name} name", NamedTextColor.GREEN))
-
             // Create necessary indexes for profile collection if needed
             try {
                 mythlinkDb.getCollection(PROFILES_COLLECTION).createIndex(org.bson.Document("_id", 1))
-                logger.debug(Component.text("Profile collection indexes verified", NamedTextColor.GREEN))
             } catch (e: Exception) {
                 logger.warn(Component.text("Could not verify or create profile indexes: ${e.message}", NamedTextColor.YELLOW))
             }
@@ -51,7 +46,6 @@ class MongoStream(val logger: ComponentLogger) {
             // Create necessary indexes for rank collection if needed
             try {
                 mythlinkDb.getCollection(RANKS_COLLECTION).createIndex(org.bson.Document("_id", 1))
-                logger.debug(Component.text("Rank collection indexes verified", NamedTextColor.GREEN))
             } catch (e: Exception) {
                 logger.warn(Component.text("Could not verify or create rank indexes: ${e.message}", NamedTextColor.YELLOW))
             }
@@ -63,7 +57,6 @@ class MongoStream(val logger: ComponentLogger) {
                 logger.info(Component.text("Successfully verified connection to the database", NamedTextColor.GREEN))
             }
 
-            logger.info(Component.text("All MythLink databases initialized successfully", NamedTextColor.GREEN))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to initialize databases: ${e.message}", NamedTextColor.RED), e)
             throw e
@@ -82,8 +75,6 @@ class MongoStream(val logger: ComponentLogger) {
             return database!!
         }
 
-        logger.info(Component.text("Initializing MongoDB connection to database: $databaseName", NamedTextColor.YELLOW))
-
         try {
             // Create the client if it doesn't exist yet
             if (client == null) {
@@ -95,15 +86,12 @@ class MongoStream(val logger: ComponentLogger) {
                 val port = mongoConfig["port"] as Int? ?: 27017
                 val username = mongoConfig["username"] as String?
                 val password = mongoConfig["password"] as String?
-
-                logger.info(Component.text("MongoDB configuration loaded - Host: $host, Port: $port, Auth: ${username != null}", NamedTextColor.YELLOW))
-
                 val connectionStringBuilder = StringBuilder("mongodb://")
 
                 // Add authentication if provided
                 if (username != null && password != null) {
                     connectionStringBuilder.append("$username:****@")
-                    logger.debug(Component.text("Using authentication with username: $username", NamedTextColor.YELLOW))
+                    logger.info(Component.text("Using authentication with username: $username", NamedTextColor.YELLOW))
                 }
 
                 // Add host and port
@@ -125,7 +113,6 @@ class MongoStream(val logger: ComponentLogger) {
                 try {
                     // Simple command to verify connection
                     client!!.getDatabase("admin").runCommand(Document("ping", 1))
-                    logger.info(Component.text("Successfully connected to MongoDB server", NamedTextColor.GREEN))
                 } catch (e: Exception) {
                     logger.error(Component.text("Failed to ping MongoDB server. Connection may be unstable.", NamedTextColor.RED), e)
                 }
@@ -136,9 +123,6 @@ class MongoStream(val logger: ComponentLogger) {
 
             // Store in the database field
             database = db
-
-            logger.info(Component.text("Successfully connected to MongoDB database: $databaseName", NamedTextColor.GREEN))
-
             return db
         } catch (e: MongoTimeoutException) {
             logger.error(Component.text("Timed out connecting to MongoDB. Please check if MongoDB server is running.", NamedTextColor.RED), e)
@@ -196,9 +180,7 @@ class MongoStream(val logger: ComponentLogger) {
             return database!!
         }
 
-        logger.info(Component.text("Connecting to mythlink database...", NamedTextColor.YELLOW))
         database = connect(DB_NAME)
-        logger.info(Component.text("Successfully connected to mythlink database", NamedTextColor.GREEN))
 
         return database!!
     }
@@ -260,11 +242,8 @@ class MongoStream(val logger: ComponentLogger) {
      * @return The MongoDB Document representation
      */
     fun profileToDocument(profile: twizzy.tech.mythLink.player.Profile): org.bson.Document {
-        return org.bson.Document()
-            .append("_id", profile.uuid.toString())  // Use UUID as the primary key instead of ObjectId
-            .append("username", profile.username)
-            .append("permissions", profile.getRawPermissions().toList())  // Store raw permissions with expiration times
-            .append("ranks", profile.getRawRanks().toList())  // Store raw ranks with expiration times
+        // Convert the profile to a map and then to a Document
+        return org.bson.Document(profile.toMap())
     }
 
     /**
@@ -274,28 +253,9 @@ class MongoStream(val logger: ComponentLogger) {
      * @return The Profile object
      */
     fun documentToProfile(document: org.bson.Document): twizzy.tech.mythLink.player.Profile {
-        val uuid = java.util.UUID.fromString(document.getString("_id"))
-        val username = document.getString("username")
-        val profile = twizzy.tech.mythLink.player.Profile(uuid, username)
-
-        // Get all permissions (may include timed permissions in format "permission|timestamp")
+        // Convert Document to Map and use Profile's fromMap method
         @Suppress("UNCHECKED_CAST")
-        val permissions = document.getList("permissions", String::class.java) ?: emptyList<String>()
-
-        // Add all permissions (the Profile class will handle parsing of timed permissions)
-        permissions.forEach { permString ->
-            profile.addRawPermission(permString)
-        }
-
-        // Get all ranks (may include timed ranks in format "rank|timestamp")
-        @Suppress("UNCHECKED_CAST")
-        val ranks = document.getList("ranks", String::class.java) ?: emptyList<String>()
-
-        // Add all ranks (the Profile class will handle parsing of timed ranks)
-        ranks.forEach { rankString ->
-            profile.addRawRank(rankString)
-        }
-
-        return profile
+        val dataMap = document.toMutableMap() as Map<String, Any>
+        return twizzy.tech.mythLink.player.Profile.fromMap(dataMap)
     }
 }

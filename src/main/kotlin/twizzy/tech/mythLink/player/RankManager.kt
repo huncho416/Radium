@@ -35,13 +35,9 @@ class RankManager(private val mongoStream: MongoStream) {
      * Creates a default rank if no ranks exist
      */
     suspend fun initialize() {
-        mongoStream.logger.info(Component.text("Initializing RankManager...", NamedTextColor.YELLOW))
-
         try {
             // First, check if the ranks collection exists
             val collections = mongoStream.getDatabase().listCollectionNames().asFlow().toList()
-            mongoStream.logger.info(Component.text("Database collections: ${collections.joinToString()}", NamedTextColor.YELLOW))
-
             val collectionExists = collections.any { it == RANKS_COLLECTION }
             if (!collectionExists) {
                 mongoStream.logger.warn(Component.text("Ranks collection does not exist in the database. It will be created.", NamedTextColor.YELLOW))
@@ -51,7 +47,6 @@ class RankManager(private val mongoStream: MongoStream) {
             cachedRanks.clear()
 
             // Load all ranks from MongoDB
-            mongoStream.logger.info(Component.text("Loading ranks from MongoDB...", NamedTextColor.YELLOW))
             val ranks = loadRanksFromMongo()
 
             // If no ranks exist, create a default rank
@@ -74,8 +69,6 @@ class RankManager(private val mongoStream: MongoStream) {
                     mongoStream.logger.error(Component.text("Failed to create default rank: ${e.message}", NamedTextColor.RED), e)
                 }
             } else {
-                mongoStream.logger.info(Component.text("Loaded ${ranks.size} ranks from database", NamedTextColor.GREEN))
-
                 // Log the names of the ranks that were loaded
                 val rankNames = ranks.joinToString { it.name }
                 mongoStream.logger.info(Component.text("Loaded ranks: $rankNames", NamedTextColor.GREEN))
@@ -378,9 +371,6 @@ class RankManager(private val mongoStream: MongoStream) {
                 .sort(Document("weight", -1))  // Sort by weight in descending order
                 .asFlow()
                 .toList()
-
-            mongoStream.logger.info(Component.text("Found ${documents.size} ranks in MongoDB", NamedTextColor.GREEN))
-
             // If no documents are found, log this as it might indicate an issue
             if (documents.isEmpty()) {
                 mongoStream.logger.warn(Component.text("No ranks found in MongoDB collection $RANKS_COLLECTION", NamedTextColor.YELLOW))

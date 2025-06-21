@@ -26,11 +26,16 @@ import revxrsal.commands.velocity.VelocityLamp
 import revxrsal.commands.velocity.VelocityVisitors.brigadier
 import twizzy.tech.mythLink.annotations.OnlinePlayers
 import twizzy.tech.mythLink.annotations.RankList
+import twizzy.tech.mythLink.commands.Friend
 import twizzy.tech.mythLink.commands.Grant
 import twizzy.tech.mythLink.commands.Permission
 import twizzy.tech.mythLink.commands.Rank
+import twizzy.tech.mythLink.commands.LastSeen
+import twizzy.tech.mythLink.commands.StaffChat
+import twizzy.tech.mythLink.commands.Vanish
 import twizzy.tech.mythLink.player.ConnectionHandler
 import twizzy.tech.mythLink.player.RankManager
+import twizzy.tech.mythLink.player.staff.StaffManager
 import twizzy.tech.mythLink.util.LettuceCache
 import twizzy.tech.mythLink.util.MongoStream
 import twizzy.tech.mythLink.util.YamlFactory
@@ -52,6 +57,7 @@ class MythLink @Inject constructor(
     val rankManager = RankManager(mongoStream)
 
     val connectionHandler = ConnectionHandler(this)
+    val staffManager = StaffManager(this)
     private var syncTaskRunning = false
 
     // Sync intervals (in milliseconds)
@@ -68,9 +74,10 @@ class MythLink @Inject constructor(
 
         logger.info(Component.text("Initializing MythLink plugin..."))
 
-        yamlFactory.ensureDatabaseConfiguration()
+        yamlFactory.initConfigurations()
 
         mongoStream.initializeDatabases()
+        lettuceCache.connect()
 
         val lamp = VelocityLamp.builder(this, server)
             .suggestionProviders { providers ->
@@ -104,6 +111,10 @@ class MythLink @Inject constructor(
         lamp.register(Permission(this))
         lamp.register(Rank(this))
         lamp.register(Grant(this))
+        lamp.register(StaffChat(this))
+        lamp.register(LastSeen(this))
+        lamp.register(Vanish(this))
+        lamp.register(Friend(this))
 
         lamp.register()
         lamp.accept(brigadier(server))
@@ -114,60 +125,32 @@ class MythLink @Inject constructor(
 
     @Subscribe
     fun permissionSetup(event: PermissionsSetupEvent) {
-        logger.info(Component.text("Successfully registered Clerk's permission provider.", NamedTextColor.GREEN))
         event.provider = object : PermissionProvider {
             override fun createFunction(subject: PermissionSubject): PermissionFunction {
                 return PermissionFunction { permission ->
                     if (subject is Player) {
-                        runBlocking {
-                            val uuid = subject.uniqueId
-                            val username = subject.username
+                        return@PermissionFunction Tristate.TRUE
+                        val uuid = subject.uniqueId
+                        val username = subject.username
 
-                            // Try to get the player's profile from the connection handler
-                            val profile = connectionHandler.getPlayerProfile(uuid, username)
-                            if (profile != null) {
-                                // First check if any of the player's ranks have this permission
-                                val activeRanks = profile.getRanks()
-                                if (activeRanks.isNotEmpty()) {
-                                    // Check each rank for the permission
-                                    for (rankName in activeRanks) {
-                                        val rank = rankManager.getRank(rankName)
-                                        if (rank != null) {
-                                            // Check direct permissions in the rank
-                                            if (hasPermissionInRank(rank.permissions, permission)) {
-                                                logger.debug(Component.text("Permission check: $username has permission $permission via rank $rankName", NamedTextColor.GREEN))
-                                                return@runBlocking Tristate.TRUE
-                                            }
-
-                                            // Check inherited rank permissions
-                                            val allInheritedRanks = rankManager.getAllInheritedRanks(rankName)
-                                            for (inheritedRankName in allInheritedRanks) {
-                                                val inheritedRank = rankManager.getRank(inheritedRankName)
-                                                if (inheritedRank != null && hasPermissionInRank(inheritedRank.permissions, permission)) {
-                                                    logger.debug(Component.text("Permission check: $username has permission $permission via inherited rank $inheritedRankName", NamedTextColor.GREEN))
-                                                    return@runBlocking Tristate.TRUE
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Finally, check direct player permissions if rank-based checks failed
-                                if (profile.hasPermission(permission)) {
-                                    logger.debug(Component.text("Permission check: $username has permission $permission via direct permission", NamedTextColor.GREEN))
-                                    Tristate.TRUE
-                                } else {
-                                    logger.debug(Component.text("Permission check: $username does not have permission $permission", NamedTextColor.RED))
-                                    Tristate.FALSE
-                                }
+                        // Use the in-memory cached profile with pre-calculated permissions
+                        val profile = connectionHandler.getPlayerProfile(uuid, username)
+                        if (profile != null) {
+                            // Use the fast effectivePermissions cache to check permission
+                            if (profile.hasEffectivePermission(permission)) {
+                                logger.info(Component.text("Permission check: $username has permission $permission", NamedTextColor.GREEN))
+                                return@PermissionFunction Tristate.TRUE
                             } else {
-                                // No profile found, default to no permission
-                                logger.debug(Component.text("Permission check failed: No profile found for $username", NamedTextColor.YELLOW))
-                                Tristate.FALSE
+                                logger.info(Component.text("Permission check: $username does not have permission $permission", NamedTextColor.RED))
+                                return@PermissionFunction Tristate.FALSE
                             }
+                        } else {
+                            // No profile found, default to no permission
+                            logger.info(Component.text("Permission check failed: No profile found for $username", NamedTextColor.YELLOW))
+                            return@PermissionFunction Tristate.FALSE
                         }
                     } else {
-                        Tristate.UNDEFINED
+                        return@PermissionFunction Tristate.UNDEFINED
                     }
                 }
             }
@@ -215,19 +198,17 @@ class MythLink @Inject constructor(
 
     @Subscribe
     fun onProxyInitialization(event: ProxyInitializeEvent) {
-        logger.info(Component.text("MythLink is initializing..."))
-
         // Initialize RankManager - load ranks from MongoDB into memory
         scope.launch {
             try {
-                logger.info(Component.text("Initializing RankManager...", NamedTextColor.YELLOW))
                 rankManager.initialize()
-                logger.info(Component.text("RankManager initialized successfully", NamedTextColor.GREEN))
             } catch (e: Exception) {
                 logger.error(Component.text("Failed to initialize RankManager: ${e.message}", NamedTextColor.RED), e)
             }
         }
 
+        server.eventManager.register(this, connectionHandler)
+        server.eventManager.register(this, staffManager)
         startSyncTask()
     }
 
@@ -281,9 +262,8 @@ class MythLink @Inject constructor(
      */
     private fun syncMemoryToRedis() {
         try {
-            logger.debug("Running scheduled Memory → Redis sync...")
             val profiles = connectionHandler.getAllProfiles()
-            logger.info("[Sync] Synchronizing ${profiles.size} profiles from memory to Redis")
+            logger.debug("[Sync] Synchronizing ${profiles.size} profiles from memory to Redis")
 
             connectionHandler.syncProfilesToRedis()
         } catch (e: Exception) {
@@ -296,7 +276,7 @@ class MythLink @Inject constructor(
      */
     private suspend fun syncRedisToMongo() {
         try {
-            logger.debug("Running scheduled Redis → MongoDB sync...")
+            logger.info("Running scheduled Redis → MongoDB sync...")
 
             // Get all Redis keys for profiles
             val keys = lettuceCache.sync().keys("profile:*")

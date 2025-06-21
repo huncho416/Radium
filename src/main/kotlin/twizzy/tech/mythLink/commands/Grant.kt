@@ -3,7 +3,6 @@ package twizzy.tech.mythLink.commands
 import com.velocitypowered.api.proxy.Player
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
-import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import revxrsal.commands.annotation.Command
 import revxrsal.commands.annotation.Optional
@@ -26,77 +25,66 @@ class Grant(private val mythLink: MythLink) {
         actor: Player,
         @Optional @OnlinePlayers target: String,
         @Optional @RankList rank: String?,
-        @Optional durationReason: String
+        @Optional durationReason: String?
     ) {
         if (target.isNullOrEmpty() || rank.isNullOrEmpty()) {
-            actor.sendMessage(Component.text("Usage: /grant <target> <rank> [duration] <reason>", NamedTextColor.YELLOW))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.usage"))
             return
         }
 
         // Verify that the rank exists
         val rankObj = mythLink.rankManager.getRank(rank)
         if (rankObj == null) {
-            actor.sendMessage(Component.text("Error: Rank '$rank' does not exist.", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.rank_not_exist", "rank" to rank))
             // Show available ranks
             val availableRanks = mythLink.rankManager.getCachedRanks()
                 .sortedByDescending { it.weight }
                 .joinToString(", ") { it.name }
-            actor.sendMessage(Component.text("Available ranks: $availableRanks", NamedTextColor.YELLOW))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.available_ranks", "ranks" to availableRanks))
             return
         }
 
-        val targetUuid = getPlayerUuid(actor, target) ?: return
 
         // Get the player's profile from cache or database
-        val profile = mythLink.connectionHandler.getPlayerProfile(targetUuid)
+        val profile = mythLink.connectionHandler.findPlayerProfile(target)
 
         if (profile == null) {
-            actor.sendMessage(Component.text("Error: Player profile not found for $target.", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.profile_not_found", "target" to target))
             return
         }
 
         // Parse duration and reason
         val (duration, reason) = parseDurationAndReason(durationReason)
 
-        if (duration == null) {
-            actor.sendMessage(Component.text("Error: Invalid duration format.", NamedTextColor.RED))
-            return
-        }
+        // Default to no duration if not specified
+        val finalDuration = duration ?: Duration.ZERO
 
         // Apply the rank with or without expiration based on the duration
-        if (duration.isZero) {
+        if (finalDuration.isZero) {
             // Permanent rank with reason
             profile.addRank(rank, actor.username, reason)
-            actor.sendMessage(
-                Component.text("Granted permanent rank ")
-                    .color(NamedTextColor.GREEN)
-                    .append(Component.text(rank).color(NamedTextColor.GOLD))
-                    .append(Component.text(" to ").color(NamedTextColor.GREEN))
-                    .append(Component.text(target).color(NamedTextColor.GOLD))
-                    .append(Component.text(".").color(NamedTextColor.GREEN))
-            )
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.grant_permanent",
+                "rank" to rank,
+                "target" to target
+            ))
         } else {
             // Timed rank with reason
-            val expirationTime = Instant.now().plus(duration)
+            val expirationTime = Instant.now().plus(finalDuration)
             profile.addRank(rank, expirationTime, actor.username, reason)
 
-            val formattedDuration = twizzy.tech.mythLink.util.DurationParser.format(duration)
-            actor.sendMessage(
-                Component.text("Granted rank ")
-                    .color(NamedTextColor.GREEN)
-                    .append(Component.text(rank).color(NamedTextColor.GOLD))
-                    .append(Component.text(" to ").color(NamedTextColor.GREEN))
-                    .append(Component.text(target).color(NamedTextColor.GOLD))
-                    .append(Component.text(" for ").color(NamedTextColor.GREEN))
-                    .append(Component.text(formattedDuration).color(NamedTextColor.GOLD))
-                    .append(Component.text(".").color(NamedTextColor.GREEN))
-            )
+            val formattedDuration = twizzy.tech.mythLink.util.DurationParser.format(finalDuration)
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.grant_temporary",
+                "rank" to rank,
+                "target" to target,
+                "duration" to formattedDuration
+            ))
         }
 
         // Log the reason if provided
-        if (reason.isNotEmpty()) {
-            actor.sendMessage(Component.text("Reason: ").color(NamedTextColor.GREEN)
-                .append(Component.text(reason).color(NamedTextColor.GRAY)))
+        if (reason != null && reason.isNotEmpty()) {
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grant.reason",
+                "reason" to reason
+            ))
         }
 
         // Sync the profile immediately to Redis
@@ -111,17 +99,16 @@ class Grant(private val mythLink: MythLink) {
     ) {
 
         if (target.isNullOrEmpty()) {
-            actor.sendMessage(Component.text("Usage: /grants <target>", NamedTextColor.YELLOW))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grants.usage"))
             return
         }
 
-        val targetUuid = getPlayerUuid(actor, target) ?: return
 
         // Get the player's profile from cache or database
-        val profile = mythLink.connectionHandler.getPlayerProfile(targetUuid)
+        val profile = mythLink.connectionHandler.findPlayerProfile(target)
 
         if (profile == null) {
-            actor.sendMessage(Component.text("Error: Player profile not found for $target.", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grants.profile_not_found", "target" to target))
             return
         }
 
@@ -130,7 +117,7 @@ class Grant(private val mythLink: MythLink) {
         val now = Instant.now()
 
         if (ranksWithStatus.isEmpty()) {
-            actor.sendMessage(Component.text("$target has no ranks", NamedTextColor.YELLOW))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grants.no_ranks", "target" to target))
             return
         }
 
@@ -138,7 +125,12 @@ class Grant(private val mythLink: MythLink) {
         val activeCount = ranksWithStatus.count { it.value.isActive }
         val inactiveCount = ranksWithStatus.size - activeCount
 
-        actor.sendMessage(Component.text("Ranks for $target (${ranksWithStatus.size} total, $activeCount active, $inactiveCount inactive):", NamedTextColor.GOLD))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.grants.header",
+            "target" to target,
+            "total" to ranksWithStatus.size.toString(),
+            "active" to activeCount.toString(),
+            "inactive" to inactiveCount.toString()
+        ))
 
         // Sort ranks: active first, then by name
         val sortedRanks = ranksWithStatus.entries.sortedWith(
@@ -158,11 +150,9 @@ class Grant(private val mythLink: MythLink) {
 
             // Build hover text
             val hoverTextBuilder = Component.text()
-                .append(Component.text("Granted by: ", NamedTextColor.GOLD))
-                .append(Component.text(status.granter, NamedTextColor.WHITE))
+                .append(mythLink.yamlFactory.getMessageComponent("commands.grants.granted_by", "granter" to status.granter))
                 .append(Component.newline())
-                .append(Component.text("Added on: ", NamedTextColor.GOLD))
-                .append(Component.text(addedDate, NamedTextColor.WHITE))
+                .append(mythLink.yamlFactory.getMessageComponent("commands.grants.added_on", "date" to addedDate))
                 .append(Component.newline())
 
             // Add grant reason if available
@@ -170,8 +160,7 @@ class Grant(private val mythLink: MythLink) {
                 val reason = profile.getRankDetails()[status.name]?.reason
                 if (reason != null && reason.isNotEmpty()) {
                     hoverTextBuilder
-                        .append(Component.text("Grant reason: ", NamedTextColor.GOLD))
-                        .append(Component.text(reason, NamedTextColor.WHITE))
+                        .append(mythLink.yamlFactory.getMessageComponent("commands.grants.grant_reason", "reason" to reason))
                         .append(Component.newline())
                 }
             }
@@ -185,8 +174,7 @@ class Grant(private val mythLink: MythLink) {
                     .format(status.expiryTime)
 
                 hoverTextBuilder
-                    .append(Component.text("Expired on: ", NamedTextColor.GOLD))
-                    .append(Component.text(expiryDate, NamedTextColor.RED))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.expired", "date" to expiryDate))
             }
             else if (status.isRevoked && status.revokedTime != null && status.revokedBy != null) {
                 // Handle revoked rank
@@ -196,18 +184,15 @@ class Grant(private val mythLink: MythLink) {
                     .format(status.revokedTime)
 
                 hoverTextBuilder
-                    .append(Component.text("Revoked by: ", NamedTextColor.GOLD))
-                    .append(Component.text(status.revokedBy, NamedTextColor.RED))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.revoked_by", "revoker" to status.revokedBy))
                     .append(Component.newline())
-                    .append(Component.text("Revoked on: ", NamedTextColor.GOLD))
-                    .append(Component.text(revokedDate, NamedTextColor.RED))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.revoked_on", "date" to revokedDate))
 
                 // Add revocation reason if available
                 if (status.revokedReason != null && status.revokedReason.isNotEmpty()) {
                     hoverTextBuilder
                         .append(Component.newline())
-                        .append(Component.text("Revocation reason: ", NamedTextColor.GOLD))
-                        .append(Component.text(status.revokedReason, NamedTextColor.RED))
+                        .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.revoked_reason", "reason" to status.revokedReason))
                 }
             }
             else if (status.expiryTime != null) {
@@ -221,40 +206,31 @@ class Grant(private val mythLink: MythLink) {
                 val formattedDuration = twizzy.tech.mythLink.util.DurationParser.format(remainingDuration)
 
                 hoverTextBuilder
-                    .append(Component.text("Status: ", NamedTextColor.GOLD))
-                    .append(Component.text("ACTIVE", NamedTextColor.GREEN))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.expires_on", "date" to expiryDate))
                     .append(Component.newline())
-                    .append(Component.text("Expires on: ", NamedTextColor.GOLD))
-                    .append(Component.text(expiryDate, NamedTextColor.WHITE))
-                    .append(Component.newline())
-                    .append(Component.text("Time remaining: ", NamedTextColor.GOLD))
-                    .append(Component.text(formattedDuration, NamedTextColor.YELLOW))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.time_remaining", "duration" to formattedDuration))
             }
             else {
                 // Handle active permanent rank
                 hoverTextBuilder
-                    .append(Component.text("Status: ", NamedTextColor.GOLD))
-                    .append(Component.text("ACTIVE", NamedTextColor.GREEN))
-                    .append(Component.newline())
-                    .append(Component.text("Duration: ", NamedTextColor.GOLD))
-                    .append(Component.text("Permanent", NamedTextColor.GREEN))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.duration", "duration" to "Permanent"))
             }
 
             // Add click instruction for active ranks
             if (status.isActive) {
                 hoverTextBuilder.append(Component.newline())
-                    .append(Component.text("Click to revoke this rank", NamedTextColor.RED))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.grants.hover.click_to_revoke"))
             }
 
             // Create the text component with appropriate styling
             val textComponent = if (status.isActive) {
-                Component.text(" - ", NamedTextColor.WHITE)
-                    .append(Component.text(rankName, NamedTextColor.WHITE))
+                Component.text(" - ")
+                    .append(Component.text(rankName))
             } else {
                 // Use strikethrough for inactive (expired or revoked) ranks
-                Component.text(" - ", NamedTextColor.GRAY)
+                Component.text(" - ")
                     .append(
-                        Component.text(rankName, NamedTextColor.GRAY)
+                        Component.text(rankName)
                             .decoration(TextDecoration.STRIKETHROUGH, true)
                     )
             }
@@ -274,7 +250,7 @@ class Grant(private val mythLink: MythLink) {
         }
     }
 
-    @Command("revoke <target> <rank> <reason>", "rg <target> <rank> <reason>", "rev <target> <rank> <reason>")
+    @Command("revoke <target> <rank> <reason>")
     @CommandPermission("command.grants.revoke")
     suspend fun revokeGrants(
         actor: Player,
@@ -284,25 +260,18 @@ class Grant(private val mythLink: MythLink) {
     ) {
 
         if (target.isNullOrEmpty() || rank.isNullOrEmpty()) {
-            actor.sendMessage(Component.text("Usage: /revoke <target> <rank> <reason>", NamedTextColor.YELLOW))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.revoke.usage"))
             return
         }
-
-        val targetUuid = getPlayerUuid(actor, target) ?: return
 
         // Get the player's profile from cache or database
-        val profile = mythLink.connectionHandler.getPlayerProfile(targetUuid)
+        val profile = mythLink.connectionHandler.findPlayerProfile(target)
 
         if (profile == null) {
-            actor.sendMessage(Component.text("Error: Player profile not found for $target.", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.revoke.profile_not_found", "target" to target))
             return
         }
 
-        // Check if the player has the rank first
-        if (!profile.hasRank(rank)) {
-            actor.sendMessage(Component.text("$target doesn't have the rank '$rank'", NamedTextColor.YELLOW))
-            return
-        }
 
         // Remove the rank
         val removed = if (reason != null && reason.isNotEmpty()) {
@@ -312,12 +281,11 @@ class Grant(private val mythLink: MythLink) {
         }
 
         if (removed) {
-            actor.sendMessage(Component.text("Revoked rank '$rank' from $target", NamedTextColor.GREEN))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.revoke.success", "rank" to rank, "target" to target))
 
             // If there was a reason provided, show it
             if (reason != null && reason.isNotEmpty()) {
-                actor.sendMessage(Component.text("Reason: ").color(NamedTextColor.GREEN)
-                    .append(Component.text(reason).color(NamedTextColor.GRAY)))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.revoke.reason", "reason" to reason))
             }
 
             // Sync the profile immediately to Redis
@@ -331,7 +299,7 @@ class Grant(private val mythLink: MythLink) {
             }
             mythLink.logger.info(logMessage)
         } else {
-            actor.sendMessage(Component.text("Failed to revoke rank '$rank' from $target", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.revoke.failed", "rank" to rank, "target" to target))
         }
     }
 
@@ -340,12 +308,12 @@ class Grant(private val mythLink: MythLink) {
      * The duration can be at the beginning or end of the string
      *
      * @param input The combined duration and reason string
-     * @return Pair of (Duration, reason string)
+     * @return Pair of (Duration?, String?) where both can be null if not provided
      */
-    private fun parseDurationAndReason(input: String): Pair<Duration?, String> {
-        // If input is empty, return null duration and empty reason
-        if (input.isBlank()) {
-            return Pair(null, "")
+    private fun parseDurationAndReason(input: String?): Pair<Duration?, String?> {
+        // If input is null or empty, return null for both duration and reason
+        if (input == null || input.isBlank()) {
+            return Pair(null, null)
         }
 
         // Check if duration is at the beginning
@@ -354,8 +322,8 @@ class Grant(private val mythLink: MythLink) {
         val durationAtStart = twizzy.tech.mythLink.util.DurationParser.parse(firstWord)
 
         if (durationAtStart != null) {
-            // Duration is at the start, rest is reason
-            val reason = if (words.size > 1) words[1].trim() else ""
+            // Duration is at the start, rest is reason (or null if empty)
+            val reason = if (words.size > 1 && words[1].isNotBlank()) words[1].trim() else null
             return Pair(durationAtStart, reason)
         }
 
@@ -364,40 +332,14 @@ class Grant(private val mythLink: MythLink) {
         val durationAtEnd = twizzy.tech.mythLink.util.DurationParser.parse(lastWord)
 
         if (durationAtEnd != null) {
-            // Duration is at the end, everything before is reason
-            val reason = input.trim().removeSuffix(lastWord).trim()
+            // Duration is at the end, everything before is reason (or null if empty)
+            val reasonText = input.trim().removeSuffix(lastWord).trim()
+            val reason = if (reasonText.isNotBlank()) reasonText else null
             return Pair(durationAtEnd, reason)
         }
 
-        // No valid duration found, assume permanent and use entire string as reason
-        return Pair(Duration.ZERO, input.trim())
+        // No valid duration found, assume the entire input is just a reason with no duration
+        return Pair(null, input.trim())
     }
 
-    /**
-     * Helper method to get a player's UUID from their username
-     *
-     * @param actor The player executing the command
-     * @param target The target player's username
-     * @return The target player's UUID, or null if not found
-     */
-    private fun getPlayerUuid(actor: Player, target: String): UUID? {
-        // First, check if the player is online
-        val onlinePlayer = mythLink.server.getPlayer(target).orElse(null)
-        if (onlinePlayer != null) {
-            return onlinePlayer.uniqueId
-        }
-
-        // Try to parse as UUID if it looks like a UUID
-        try {
-            if (target.length > 30 && target.contains("-")) {
-                return UUID.fromString(target)
-            }
-        } catch (e: IllegalArgumentException) {
-            // Not a valid UUID, continue
-        }
-
-        // Could implement offline player lookup here if needed
-        actor.sendMessage(Component.text("Player $target not found or not online", NamedTextColor.RED))
-        return null
-    }
 }

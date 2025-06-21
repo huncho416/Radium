@@ -2,7 +2,6 @@ package twizzy.tech.mythLink.commands
 
 import com.velocitypowered.api.proxy.Player
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import revxrsal.commands.annotation.Command
 import revxrsal.commands.annotation.Description
@@ -22,25 +21,16 @@ class Rank(private val mythLink: MythLink) {
 
     @Command("rank", "ranks")
     fun rankUsage(actor: Player) {
-        actor.sendMessage(Component.text("Rank Management Commands:", NamedTextColor.GOLD))
-        actor.sendMessage(Component.text("  /rank create <name>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Creates a new rank", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank delete <name>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Deletes an existing rank", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank setprefix <name> <prefix>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Sets a rank's prefix", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank setweight <name> <weight>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Sets a rank's weight", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank permission add <name> <permission>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Adds a permission to a rank", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank permission remove <name> <permission>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Removes a permission from a rank", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank inherit <name> <inherit>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Toggles inheritance from another rank", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank info <name>", NamedTextColor.YELLOW)
-            .append(Component.text(" - Shows information about a rank", NamedTextColor.WHITE)))
-        actor.sendMessage(Component.text("  /rank list", NamedTextColor.YELLOW)
-            .append(Component.text(" - Lists all ranks sorted by weight", NamedTextColor.WHITE)))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.header"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.main"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.delete"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.setprefix"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.setweight"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.permission_add"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.permission_remove"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.inherit"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.info"))
+        actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.usage.list"))
     }
 
     @Subcommand("create")
@@ -51,17 +41,18 @@ class Rank(private val mythLink: MythLink) {
     ) {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank create <name>", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.create.usage"))
                 return
             }
-            
+
             // Create rank with default values
             val rank = rankManager.createRank(name, "&7", 0)
-            actor.sendMessage(Component.text()
-                .append(Component.text("Successfully created rank: ", NamedTextColor.GREEN))
-                .append(Component.text(rank.name, NamedTextColor.GOLD)))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.create.success", "rank" to rank.name))
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to create rank: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "create rank",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -73,18 +64,21 @@ class Rank(private val mythLink: MythLink) {
     ) {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank delete <name>", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.delete.usage"))
                 return
             }
 
             val success = rankManager.deleteRank(name)
             if (success) {
-                actor.sendMessage(Component.text("Successfully deleted rank: $name", NamedTextColor.GREEN))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.delete.success", "rank" to name))
             } else {
-                actor.sendMessage(Component.text("Rank not found: $name", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.delete.not_found", "rank" to name))
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to delete rank: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "delete rank",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -96,9 +90,8 @@ class Rank(private val mythLink: MythLink) {
         @Optional prefix: String?
     ){
         try {
-
             if (name.isNullOrEmpty() || prefix.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank setprefix <name> <prefix>", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.setprefix.usage"))
                 return
             }
 
@@ -107,12 +100,18 @@ class Rank(private val mythLink: MythLink) {
             }
 
             if (success) {
-                actor.sendMessage(Component.text("Successfully set prefix of $name to $prefix", NamedTextColor.GREEN))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.setprefix.success",
+                    "rank" to name,
+                    "prefix" to prefix
+                ))
             } else {
-                actor.sendMessage(Component.text("Rank not found: $name", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to set prefix: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set prefix",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -125,7 +124,7 @@ class Rank(private val mythLink: MythLink) {
     ){
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank setweight <name> <weight>", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.setweight.usage"))
                 return
             }
 
@@ -134,12 +133,18 @@ class Rank(private val mythLink: MythLink) {
             }
 
             if (success) {
-                actor.sendMessage(Component.text("Successfully set weight of $name to $weight", NamedTextColor.GREEN))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.setweight.success",
+                    "rank" to name,
+                    "weight" to weight.toString()
+                ))
             } else {
-                actor.sendMessage(Component.text("Rank not found: $name", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to set weight: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set weight",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -152,25 +157,24 @@ class Rank(private val mythLink: MythLink) {
     ){
         try {
             if (name.isNullOrEmpty() || permission.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank permission add <name> <permission> [<duration>]", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.permission.add.usage"))
                 return
             }
 
-
             val success = rankManager.addPermissionToRank(name, permission)
             if (success) {
-                actor.sendMessage(Component.text()
-                    .append(Component.text("Successfully added permission ", NamedTextColor.GREEN))
-                    .append(Component.text(permission, NamedTextColor.GOLD))
-                    .append(Component.text(" to rank ", NamedTextColor.GREEN))
-                    .append(Component.text(name, NamedTextColor.GOLD))
-                    .build()
-                )
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.permission.add.success",
+                    "permission" to permission,
+                    "rank" to name
+                ))
             } else {
-                actor.sendMessage(Component.text("Rank not found: $name", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to add permission: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "add permission",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -183,25 +187,25 @@ class Rank(private val mythLink: MythLink) {
     ) {
 
         if (name.isNullOrEmpty() || permission.isNullOrEmpty()) {
-            actor.sendMessage(Component.text("Usage: /rank permission remove <name> <permission>", NamedTextColor.YELLOW))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.permission.remove.usage"))
             return
         }
 
         try {
             val success = rankManager.removePermissionFromRank(name, permission)
             if (success) {
-                actor.sendMessage(Component.text()
-                    .append(Component.text("Successfully removed permission ", NamedTextColor.GREEN))
-                    .append(Component.text(permission, NamedTextColor.GOLD))
-                    .append(Component.text(" from rank ", NamedTextColor.GREEN))
-                    .append(Component.text(name, NamedTextColor.GOLD))
-                    .build()
-                )
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.permission.remove.success",
+                    "permission" to permission,
+                    "rank" to name
+                ))
             } else {
-                actor.sendMessage(Component.text("Rank not found or permission not assigned to this rank", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.permission.remove.not_found"))
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to remove permission: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "remove permission",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -214,15 +218,14 @@ class Rank(private val mythLink: MythLink) {
     ) {
         try {
             if (name.isNullOrEmpty() || inherit.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank inherit <name> <inherit>", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.inherit.usage"))
                 return
             }
-
 
             // Get the rank to check if it already inherits from the specified rank
             val rank = rankManager.getRank(name)
             if (rank == null) {
-                actor.sendMessage(Component.text("Rank not found: $name", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
                 return
             }
 
@@ -233,35 +236,38 @@ class Rank(private val mythLink: MythLink) {
                 // Already inherits, so remove it
                 val removed = rankManager.removeInheritedRank(name, inherit)
                 if (removed) {
-                    actor.sendMessage(Component.text()
-                        .append(Component.text("Successfully removed inheritance: ", NamedTextColor.GREEN))
-                        .append(Component.text(name, NamedTextColor.GOLD))
-                        .append(Component.text(" no longer inherits from ", NamedTextColor.GREEN))
-                        .append(Component.text(inherit, NamedTextColor.GOLD))
-                        .build()
-                    )
+                    actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.inherit.remove_success",
+                        "rank" to name,
+                        "inherit" to inherit
+                    ))
                 } else {
-                    actor.sendMessage(Component.text("Failed to remove inheritance. Rank not found or no inheritance relationship exists.", NamedTextColor.YELLOW))
+                    actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.inherit.failed",
+                        "operation" to "remove",
+                        "reason" to "Rank not found or no inheritance relationship exists."
+                    ))
                 }
                 removed
             } else {
                 // Doesn't inherit yet, so add it
                 val added = rankManager.addInheritedRank(name, inherit)
                 if (added) {
-                    actor.sendMessage(Component.text()
-                        .append(Component.text("Successfully added inheritance: ", NamedTextColor.GREEN))
-                        .append(Component.text(name, NamedTextColor.GOLD))
-                        .append(Component.text(" now inherits from ", NamedTextColor.GREEN))
-                        .append(Component.text(inherit, NamedTextColor.GOLD))
-                        .build()
-                    )
+                    actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.inherit.add_success",
+                        "rank" to name,
+                        "inherit" to inherit
+                    ))
                 } else {
-                    actor.sendMessage(Component.text("Failed to add inheritance. One of the ranks was not found.", NamedTextColor.YELLOW))
+                    actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.inherit.failed",
+                        "operation" to "add",
+                        "reason" to "One of the ranks was not found."
+                    ))
                 }
                 added
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to toggle inheritance: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "toggle inheritance",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -274,7 +280,7 @@ class Rank(private val mythLink: MythLink) {
     )  {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(Component.text("Usage: /rank info <name>", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.info.usage"))
                 return
             }
 
@@ -305,50 +311,48 @@ class Rank(private val mythLink: MythLink) {
 
                 // Build the component for display
                 val component = Component.text()
-                    .append(Component.text("=== Rank Info: ", NamedTextColor.GOLD, TextDecoration.BOLD))
-                    .append(Component.text(rank.name, NamedTextColor.WHITE, TextDecoration.BOLD))
-                    .append(Component.text(" ===", NamedTextColor.GOLD, TextDecoration.BOLD))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.header", "rank" to rank.name))
                     .appendNewline()
-                    .append(Component.text("Prefix: ", NamedTextColor.YELLOW))
-                    .append(Component.text(rank.prefix, NamedTextColor.WHITE))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.prefix", "prefix" to rank.prefix))
                     .appendNewline()
-                    .append(Component.text("Weight: ", NamedTextColor.YELLOW))
-                    .append(Component.text(rank.weight.toString(), NamedTextColor.WHITE))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.weight", "weight" to rank.weight.toString()))
                     .appendNewline()
-                    .append(Component.text("Inherits: ", NamedTextColor.YELLOW))
-                    .append(Component.text(if (directInherits.isEmpty()) "None" else directInherits.joinToString(", "), NamedTextColor.WHITE))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.inherits",
+                        "inherits" to if (directInherits.isEmpty()) "None" else directInherits.joinToString(", ")
+                    ))
                     .appendNewline()
-                    .append(Component.text("Permissions:", NamedTextColor.YELLOW))
+                    .append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.permissions"))
                     .appendNewline()
 
                 // Display permissions in requested format
                 if (permissionMap.isEmpty()) {
-                    component.append(Component.text("  None", NamedTextColor.GRAY))
+                    component.append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.none"))
                 } else {
                     // First show own permissions
                     permissionMap.entries.filter { it.value == null }.forEach { (perm, _) ->
-                        component.append(Component.text("  ", NamedTextColor.GRAY))
-                            .append(Component.text(perm, NamedTextColor.WHITE))
+                        component.append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.permission", "permission" to perm))
                             .appendNewline()
                     }
 
                     // Then show inherited permissions with source
                     permissionMap.entries.filter { it.value != null }.forEach { (perm, source) ->
-                        component.append(Component.text("  ", NamedTextColor.GRAY))
-                            .append(Component.text(perm, NamedTextColor.WHITE))
-                            .append(Component.text(" (from ", NamedTextColor.GRAY))
-                            .append(Component.text(source!!, NamedTextColor.GOLD))
-                            .append(Component.text(")", NamedTextColor.GRAY))
-                            .appendNewline()
+                        component.append(mythLink.yamlFactory.getMessageComponent("commands.rank.info.inherited_permission",
+                            "permission" to perm,
+                            "source" to source!!
+                        ))
+                        .appendNewline()
                     }
                 }
 
                 actor.sendMessage(component.build())
             } else {
-                actor.sendMessage(Component.text("Rank not found: $name", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
             }
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to get rank info: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "get rank info",
+                "message" to e.message.toString()
+            ))
         }
     }
 
@@ -359,29 +363,29 @@ class Rank(private val mythLink: MythLink) {
         try {
             val ranks = rankManager.listRanksByWeight()
             if (ranks.isEmpty()) {
-                actor.sendMessage(Component.text("No ranks found.", NamedTextColor.YELLOW))
+                actor.sendMessage(mythLink.yamlFactory.getMessageComponent("commands.rank.list.none"))
                 return
             }
 
             val component = Component.text()
-                .append(Component.text("=== Ranks List ===", NamedTextColor.GOLD, TextDecoration.BOLD))
+                .append(mythLink.yamlFactory.getMessageComponent("commands.rank.list.header"))
                 .appendNewline()
 
             ranks.forEach { rank ->
-                component.append(Component.text("• ", NamedTextColor.GRAY))
-                    .append(Component.text(rank.name, NamedTextColor.WHITE))
-                    .append(Component.text(" (", NamedTextColor.GRAY))
-                    .append(Component.text("Weight: ${rank.weight}", NamedTextColor.YELLOW))
-                    .append(Component.text(", ", NamedTextColor.GRAY))
-                    .append(Component.text("Prefix: ", NamedTextColor.YELLOW))
-                    .append(Component.text(rank.prefix, NamedTextColor.WHITE))
-                    .append(Component.text(")", NamedTextColor.GRAY))
-                    .appendNewline()
+                component.append(mythLink.yamlFactory.getMessageComponent("commands.rank.list.entry",
+                    "name" to rank.name,
+                    "weight" to rank.weight.toString(),
+                    "prefix" to rank.prefix
+                ))
+                .appendNewline()
             }
 
             actor.sendMessage(component.build())
         } catch (e: Exception) {
-            actor.sendMessage(Component.text("Failed to list ranks: ${e.message}", NamedTextColor.RED))
+            actor.sendMessage(mythLink.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "list ranks",
+                "message" to e.message.toString()
+            ))
         }
     }
 }

@@ -39,17 +39,12 @@ class LettuceCache(val logger: ComponentLogger) {
             return connection!!
         }
 
-        logger.info(Component.text("Initializing Redis connection...", NamedTextColor.YELLOW))
-
         try {
             val config = loadRedisConfig()
             val host = config["host"] as String? ?: "localhost"
             val port = config["port"] as Int? ?: 6379
             val username = config["username"] as String? ?: null
             val password = config["password"] as String? ?: null
-
-            logger.info(Component.text("Redis configuration loaded - Host: $host, Port: $port, Auth: ${username != null || password != null}", NamedTextColor.YELLOW))
-
             // Build Redis URI
             val redisURIBuilder = RedisURI.builder()
                 .withHost(host)
@@ -59,10 +54,9 @@ class LettuceCache(val logger: ComponentLogger) {
             // Add authentication if provided
             if (!username.isNullOrEmpty() && !password.isNullOrEmpty()) {
                 redisURIBuilder.withAuthentication(username, password)
-                logger.debug("Using Redis authentication with username: $username")
             } else if (!password.isNullOrEmpty()) {
                 redisURIBuilder.withPassword(password.toCharArray())
-                logger.debug("Using Redis authentication with password only")
+                logger.info("Using Redis authentication with password only")
             }
 
             val redisURI = redisURIBuilder.build()
@@ -89,7 +83,6 @@ class LettuceCache(val logger: ComponentLogger) {
                 logger.error(Component.text("Failed to ping Redis server. Connection may be unstable.", NamedTextColor.RED), e)
             }
 
-            logger.info(Component.text("Redis client initialized successfully", NamedTextColor.GREEN))
             return connection!!
 
         } catch (e: RedisConnectionException) {
@@ -171,7 +164,6 @@ class LettuceCache(val logger: ComponentLogger) {
             throw FileNotFoundException("Database configuration file not found. Make sure to call YamlFactory.ensureDatabaseConfiguration() first.")
         }
 
-        logger.debug("Loading Redis configuration from ${configFile.absolutePath}")
         val yaml = Yaml()
         val config = yaml.load(FileInputStream(configFile)) as Map<String, Any>
 
@@ -185,7 +177,7 @@ class LettuceCache(val logger: ComponentLogger) {
      */
     fun isConnectionValid(): Boolean {
         if (connection == null || !connection!!.isOpen) {
-            logger.debug("Redis connection is null or not open")
+            logger.info("Redis connection is null or not open")
             return false
         }
 
@@ -213,7 +205,7 @@ class LettuceCache(val logger: ComponentLogger) {
             // Set expiration (default 30 minutes)
             sync().expire(key, expireSeconds)
 
-            logger.debug(Component.text("Cached profile for ${profile.username} (${profile.uuid}) in Redis with TTL of ${expireSeconds}s", NamedTextColor.GREEN))
+            logger.info(Component.text("Cached profile for ${profile.username} (${profile.uuid}) in Redis with TTL of ${expireSeconds}s", NamedTextColor.GREEN))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to cache profile in Redis: ${e.message}", NamedTextColor.RED), e)
         }
@@ -274,7 +266,7 @@ class LettuceCache(val logger: ComponentLogger) {
         try {
             val key = "profile:$uuid"
             sync().del(key)
-            logger.debug(Component.text("Removed profile for $uuid from Redis", NamedTextColor.GREEN))
+            logger.info(Component.text("Removed profile for $uuid from Redis", NamedTextColor.GREEN))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to remove profile from Redis: ${e.message}", NamedTextColor.RED), e)
         }
@@ -286,13 +278,8 @@ class LettuceCache(val logger: ComponentLogger) {
      * @return JSON representation of the profile
      */
     private fun serializeProfile(profile: twizzy.tech.mythLink.player.Profile): String {
-        val data = mapOf(
-            "uuid" to profile.uuid.toString(),
-            "username" to profile.username,
-            "permissions" to profile.getRawPermissions().toList(),
-            "ranks" to profile.getRawRanks().toList()
-        )
-
+        // Use the profile's toMap method to get all profile data
+        val data = profile.toMap()
         return com.google.gson.Gson().toJson(data)
     }
 
@@ -304,33 +291,82 @@ class LettuceCache(val logger: ComponentLogger) {
     private fun deserializeProfile(json: String): twizzy.tech.mythLink.player.Profile? {
         try {
             val gson = com.google.gson.Gson()
-            val data = gson.fromJson(json, Map::class.java)
-
-            val uuid = java.util.UUID.fromString(data["uuid"] as String)
-            val username = data["username"] as String
-            val profile = twizzy.tech.mythLink.player.Profile(uuid, username)
-
-            // Add permissions (can be simple permissions or permission|timestamp format)
+            // Convert JSON to Map and use Profile's fromMap method
             @Suppress("UNCHECKED_CAST")
-            val permissions = data["permissions"] as List<String>? ?: emptyList()
-
-            // Add all permissions directly as raw permission strings
-            permissions.forEach { permString ->
-                profile.addRawPermission(permString)
-            }
-
-            // Add ranks
-            @Suppress("UNCHECKED_CAST")
-            val ranks = data["ranks"] as List<String>? ?: emptyList()
-
-            // Add all ranks directly as raw rank strings
-            ranks.forEach { rankString ->
-                profile.addRawRank(rankString)
-            }
-
-            return profile
+            val data = gson.fromJson(json, Map::class.java) as Map<String, Any>
+            return twizzy.tech.mythLink.player.Profile.fromMap(data)
         } catch (e: Exception) {
             logger.error(Component.text("Failed to deserialize profile: ${e.message}", NamedTextColor.RED), e)
+            return null
+        }
+    }
+
+    /**
+     * Stores a friend's last seen timestamp in Redis
+     * @param playerUuid The UUID of the player
+     * @param friendUuid The UUID of the friend
+     * @param lastSeen The last seen timestamp in milliseconds
+     * @param expireSeconds Optional expiration time in seconds, defaults to 1 day (86400 seconds)
+     */
+    fun cacheFriendLastSeen(playerUuid: java.util.UUID, friendUuid: java.util.UUID, lastSeen: Long, expireSeconds: Long = 86400) {
+        try {
+            val key = "friend_lastseen:$playerUuid:$friendUuid"
+            sync().set(key, lastSeen.toString())
+            sync().expire(key, expireSeconds)
+
+            logger.debug("Cached last seen time for friend $friendUuid of player $playerUuid in Redis")
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to cache friend's last seen time in Redis: ${e.message}", NamedTextColor.RED), e)
+        }
+    }
+
+    /**
+     * Retrieves all friends' last seen timestamps for a player from Redis
+     * @param playerUuid The UUID of the player
+     * @return A map of friend UUIDs to their last seen timestamps in milliseconds
+     */
+    fun getFriendsLastSeen(playerUuid: java.util.UUID): Map<java.util.UUID, java.time.Instant> {
+        try {
+            val pattern = "friend_lastseen:$playerUuid:*"
+            val keys = sync().keys(pattern)
+
+            val result = mutableMapOf<java.util.UUID, java.time.Instant>()
+
+            for (key in keys) {
+                try {
+                    // Extract friend UUID from key (format: friend_lastseen:{playerUuid}:{friendUuid})
+                    val friendUuid = java.util.UUID.fromString(key.split(":")[2])
+
+                    // Get last seen timestamp
+                    val timestamp = sync().get(key)?.toLong()
+                    if (timestamp != null) {
+                        result[friendUuid] = java.time.Instant.ofEpochMilli(timestamp)
+                    }
+                } catch (e: Exception) {
+                    logger.debug("Skipping invalid friend last seen entry: $key, Error: ${e.message}")
+                }
+            }
+
+            return result
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to retrieve friends' last seen times from Redis: ${e.message}", NamedTextColor.RED), e)
+            return emptyMap()
+        }
+    }
+
+    /**
+     * Retrieves a specific friend's last seen timestamp from Redis
+     * @param playerUuid The UUID of the player
+     * @param friendUuid The UUID of the friend
+     * @return The last seen timestamp as an Instant, or null if not found
+     */
+    fun getFriendLastSeen(playerUuid: java.util.UUID, friendUuid: java.util.UUID): java.time.Instant? {
+        try {
+            val key = "friend_lastseen:$playerUuid:$friendUuid"
+            val timestamp = sync().get(key)?.toLong() ?: return null
+            return java.time.Instant.ofEpochMilli(timestamp)
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to retrieve friend's last seen time from Redis: ${e.message}", NamedTextColor.RED), e)
             return null
         }
     }

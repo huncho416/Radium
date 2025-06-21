@@ -1,5 +1,6 @@
 package twizzy.tech.mythLink.player
 
+import twizzy.tech.mythLink.MythLink
 import java.time.Instant
 import java.util.*
 
@@ -20,6 +21,16 @@ class Profile {
     var username: String
 
     /**
+     * Last time the player was seen online
+     */
+    var lastSeen: Instant = Instant.now()
+
+    /**
+     * Player settings stored as key-value pairs
+     */
+    private val settings: MutableMap<String, String> = HashMap()
+
+    /**
      * Set of permissions this player has
      * For enhanced permissions, the format is "permission|granter|addedTimestamp|expirationTimestamp"
      * If no expiration, the format is "permission|granter|addedTimestamp"
@@ -32,6 +43,35 @@ class Profile {
      * If no expiration, the format is "rank|granter|addedTimestamp"
      */
     private val ranks: MutableSet<String> = HashSet()
+
+    /**
+     * Cached set of all effective permissions (direct + rank + inherited)
+     * This is an in-memory only cache and is not persisted to the database
+     */
+    @Transient
+    private var effectivePermissions: MutableSet<String> = HashSet()
+
+    /**
+     * Set of UUIDs of players who are friends with this player
+     */
+    private val friends: MutableSet<UUID> = HashSet()
+
+    /**
+     * Set of UUIDs of players who have sent a friend request to this player
+     */
+    private val incomingRequests: MutableSet<UUID> = HashSet()
+
+    /**
+     * Set of UUIDs of players to whom this player has sent a friend request
+     */
+    private val outgoingRequests: MutableSet<UUID> = HashSet()
+
+    /**
+     * In-memory cache of friends' last seen timestamps
+     * This is not persisted to the database
+     */
+    @Transient
+    private val friendsLastSeen: MutableMap<UUID, Instant> = HashMap()
 
     /**
      * Delimiter used to separate permission data fields
@@ -63,6 +103,83 @@ class Profile {
         const val RANK_REVOKED_BY_INDEX = 6
         const val RANK_REVOKED_TIME_INDEX = 7
         const val RANK_REVOKED_REASON_INDEX = 8
+
+
+        fun fromMap(data: Map<String, Any>): Profile {
+            // Check if UUID is stored directly or as _id (for MongoDB)
+            val uuidString = (data["uuid"] as? String) ?: (data["_id"] as? String)
+            ?: throw IllegalArgumentException("Map must contain either 'uuid' or '_id' field")
+
+            val uuid = UUID.fromString(uuidString)
+            val username = data["username"] as String
+            val profile = Profile(uuid, username)
+
+            // Set lastSeen if it exists
+            val lastSeenMillis = data["lastSeen"] as? Number
+            if (lastSeenMillis != null) {
+                profile.lastSeen = java.time.Instant.ofEpochMilli(lastSeenMillis.toLong())
+            }
+
+            // Add settings if they exist
+            @Suppress("UNCHECKED_CAST")
+            val settings = data["settings"] as? Map<String, String>
+            if (settings != null) {
+                for ((key, value) in settings) {
+                    profile.setSetting(key, value)
+                }
+            }
+
+            // Add permissions
+            @Suppress("UNCHECKED_CAST")
+            val permissions = data["permissions"] as? List<String>
+            permissions?.forEach { permString ->
+                profile.addRawPermission(permString)
+            }
+
+            // Add ranks
+            @Suppress("UNCHECKED_CAST")
+            val ranks = data["ranks"] as? List<String>
+            ranks?.forEach { rankString ->
+                profile.addRawRank(rankString)
+            }
+
+            // Add friends if they exist
+            @Suppress("UNCHECKED_CAST")
+            val friends = data["friends"] as? List<String>
+            friends?.forEach { uuidString ->
+                try {
+                    profile.friends.add(UUID.fromString(uuidString))
+                } catch (e: IllegalArgumentException) {
+                    // Invalid UUID string, skip
+                }
+            }
+
+            // Add incoming requests if they exist
+            @Suppress("UNCHECKED_CAST")
+            val incomingRequests = data["incomingRequests"] as? List<String>
+            incomingRequests?.forEach { uuidString ->
+                try {
+                    profile.incomingRequests.add(UUID.fromString(uuidString))
+                } catch (e: IllegalArgumentException) {
+                    // Invalid UUID string, skip
+                }
+            }
+
+            // Add outgoing requests if they exist
+            @Suppress("UNCHECKED_CAST")
+            val outgoingRequests = data["outgoingRequests"] as? List<String>
+            outgoingRequests?.forEach { uuidString ->
+                try {
+                    profile.outgoingRequests.add(UUID.fromString(uuidString))
+                } catch (e: IllegalArgumentException) {
+                    // Invalid UUID string, skip
+                }
+            }
+
+            return profile
+        }
+
+
     }
 
     /**
@@ -541,7 +658,7 @@ class Profile {
         val rankString = if (reason != null && reason.isNotEmpty()) {
             "$rank$DELIMITER$granter$DELIMITER${Instant.now().toEpochMilli()}${DELIMITER}null$DELIMITER$reason"
         } else {
-            "$rank$DELIMITER$granter$DELIMITER${Instant.now().toEpochMilli()}${DELIMITER}null"
+            "$rank$DELIMITER$granter$DELIMITER${Instant.now().toEpochMilli()}${DELIMITER}null${DELIMITER}" // Added empty field for reason
         }
         return ranks.add(rankString)
     }
@@ -565,7 +682,7 @@ class Profile {
         val rankString = if (reason != null && reason.isNotEmpty()) {
             "$rank$DELIMITER$granter$DELIMITER$addedTimestamp$DELIMITER${expiration.toEpochMilli()}$DELIMITER$reason"
         } else {
-            "$rank$DELIMITER$granter$DELIMITER$addedTimestamp$DELIMITER${expiration.toEpochMilli()}"
+            "$rank$DELIMITER$granter$DELIMITER$addedTimestamp$DELIMITER${expiration.toEpochMilli()}$DELIMITER" // Added empty field for reason
         }
         return ranks.add(rankString)
     }
@@ -606,9 +723,9 @@ class Profile {
             // Add it back with revocation information
             // Format: rank|granter|timestamp|expirationTimestamp|reason|revoked|revoker|revokeTimestamp|revokeReason
             val revokedString = if (reason != null && reason.isNotEmpty()) {
-                "$rankString$DELIMITER${"revoked"}$DELIMITER$revokedBy$DELIMITER$now$DELIMITER$reason"
+                "$rankString${DELIMITER}revoked$DELIMITER$revokedBy$DELIMITER$now$DELIMITER$reason"
             } else {
-                "$rankString$DELIMITER${"revoked"}$DELIMITER$revokedBy$DELIMITER$now"
+                "$rankString${DELIMITER}revoked$DELIMITER$revokedBy$DELIMITER$now$DELIMITER" // Added an empty field for consistency
             }
 
             success = ranks.add(revokedString) || success
@@ -651,7 +768,7 @@ class Profile {
             val parts = rankString.split(DELIMITER)
             if (parts.isEmpty()) false
             else {
-                // Rank matches and is not revoked
+                // Rank matches and is not already revoked
                 parts[RANK_INDEX] == rank &&
                 (parts.size <= RANK_REVOKED_INDEX || parts[RANK_REVOKED_INDEX] != "revoked")
             }
@@ -852,6 +969,89 @@ class Profile {
     }
 
     /**
+     * Updates the effective permissions cache for this profile by combining:
+     * - Direct permissions from the profile
+     * - Permissions from all ranks the player has
+     * - Permissions from all ranks inherited by the player's ranks
+     *
+     * This method is memory-only and the cache is not persisted to the database.
+     *
+     * @param rankManager The rank manager to get rank permissions from
+     */
+    suspend fun updateEffectivePermissions(rankManager: RankManager) {
+        // Start with the player's direct permissions
+        val allPermissions = mutableSetOf<String>()
+        allPermissions.addAll(getPermissions())
+
+        // Add permissions from all ranks and their inherited ranks
+        val playerRanks = getRanks()
+        for (rankName in playerRanks) {
+            val rank = rankManager.getRank(rankName)
+            if (rank != null) {
+                // Add the rank's direct permissions
+                allPermissions.addAll(rank.permissions)
+
+                // Add inherited permissions
+                val inheritedRanks = rankManager.getAllInheritedRanks(rankName)
+                for (inheritedRankName in inheritedRanks) {
+                    val inheritedRank = rankManager.getRank(inheritedRankName)
+                    if (inheritedRank != null) {
+                        allPermissions.addAll(inheritedRank.permissions)
+                    }
+                }
+            }
+        }
+
+        // Update the effective permissions cache
+        effectivePermissions = allPermissions
+    }
+
+    /**
+     * Fast permission check using the effective permissions cache.
+     * Make sure to call updateEffectivePermissions() first to ensure the cache is up to date.
+     *
+     * @param permission The permission to check
+     * @return true if the player has the permission, false otherwise
+     */
+    fun hasEffectivePermission(permission: String): Boolean {
+        val lowercasePermission = permission.lowercase()
+
+        // Direct match
+        if (effectivePermissions.contains(lowercasePermission)) {
+            return true
+        }
+
+        // Wildcard matching
+        val permParts = lowercasePermission.split(".")
+        for (i in permParts.indices) {
+            val wildcardBase = permParts.subList(0, i + 1).joinToString(".")
+            val wildcard = "$wildcardBase.*"
+
+            if (effectivePermissions.contains(wildcard)) {
+                return true
+            }
+        }
+
+        // Global wildcard
+        return effectivePermissions.contains("*")
+    }
+
+    /**
+     * Gets all effective permissions for this player (direct + from ranks + inherited)
+     * @return An unmodifiable set of all effective permissions
+     */
+    fun getEffectivePermissions(): Set<String> {
+        return Collections.unmodifiableSet(effectivePermissions)
+    }
+
+    /**
+     * Clears the effective permissions cache
+     */
+    fun clearEffectivePermissionsCache() {
+        effectivePermissions.clear()
+    }
+
+    /**
      * Gets all permissions including revoked or expired ones
      * Each permission is returned with its status (active, revoked, expired)
      *
@@ -1041,4 +1241,313 @@ class Profile {
         val revokedTime: Instant?,
         val revokedReason: String?
     )
+
+    /**
+     * Gets the value of a specific setting
+     *
+     * @param key The setting key
+     * @return The setting value, or null if not set
+     */
+    fun getSetting(key: String): String? {
+        return settings[key]
+    }
+
+    /**
+     * Sets the value of a specific setting
+     *
+     * @param key The setting key
+     * @param value The setting value
+     */
+    fun setSetting(key: String, value: String) {
+        settings[key] = value
+    }
+
+    /**
+     * Removes a specific setting
+     *
+     * @param key The setting key
+     */
+    fun removeSetting(key: String) {
+        settings.remove(key)
+    }
+
+    /**
+     * Clears all settings
+     */
+    fun clearSettings() {
+        settings.clear()
+    }
+
+    /**
+     * Gets all settings as an unmodifiable map
+     *
+     * @return Map of all settings
+     */
+    fun getSettings(): Map<String, String> {
+        return Collections.unmodifiableMap(settings)
+    }
+
+    /**
+     * Converts the profile to a Map representation for storage
+     *
+     * @return Map containing all profile data
+     */
+    fun toMap(): Map<String, Any> {
+        return mapOf(
+            // Always include uuid for Redis and other stores
+            "uuid" to uuid.toString(),
+            "username" to username,
+            "lastSeen" to lastSeen.toEpochMilli(),
+            "settings" to settings,
+            "permissions" to permissions.toList(),
+            "ranks" to ranks.toList(),
+            "friends" to friends.map { it.toString() },
+            "incomingRequests" to incomingRequests.map { it.toString() },
+            "outgoingRequests" to outgoingRequests.map { it.toString() }
+        )
+    }
+
+    /**
+     * Enum representing the possible outcomes of friend operations
+     */
+    enum class FriendResult {
+        SENT,              // Friend request sent successfully
+        ACCEPTED,          // Friend request accepted
+        ALREADY_FRIENDS,   // Players are already friends
+        ALREADY_SENT,      // Friend request already sent
+        REMOVED,           // Friend removed successfully
+        CANCELLED_OUTGOING, // Outgoing friend request cancelled
+        CANCELLED_INCOMING, // Incoming friend request rejected
+        NOT_FOUND,         // No friend relationship or request found
+        SELF               // Attempted to add self as friend
+    }
+
+
+    /**
+     * Adds a friend or sends a friend request to another player
+     *
+     * @param targetProfile The profile of the player to add as a friend
+     * @return A FriendResult indicating the outcome of the operation
+     */
+    fun addFriend(targetProfile: Profile): FriendResult {
+        val targetUuid = targetProfile.uuid
+
+        // Don't allow adding yourself as a friend
+        if (targetUuid == this.uuid) {
+            return FriendResult.SELF
+        }
+
+        // Check if already friends
+        if (friends.contains(targetUuid)) {
+            return FriendResult.ALREADY_FRIENDS
+        }
+
+        // Check if target has sent us a friend request already
+        if (incomingRequests.contains(targetUuid)) {
+            // Accept the request
+            incomingRequests.remove(targetUuid)
+            friends.add(targetUuid)
+
+            // Add ourselves to their friends list and remove their outgoing request
+            targetProfile.friends.add(this.uuid)
+            targetProfile.outgoingRequests.remove(this.uuid)
+
+            return FriendResult.ACCEPTED
+        }
+
+        // Check if we already sent a request
+        if (outgoingRequests.contains(targetUuid)) {
+            return FriendResult.ALREADY_SENT
+        }
+
+        // Send a new friend request
+        outgoingRequests.add(targetUuid)
+        targetProfile.incomingRequests.add(this.uuid)
+
+        return FriendResult.SENT
+    }
+
+    /**
+     * Removes a friend or cancels a friend request
+     *
+     * @param targetUuid The UUID of the player to remove
+     * @return A FriendResult indicating the outcome of the operation
+     */
+    fun removeFriend(targetUuid: UUID): FriendResult {
+        // Check if they are a friend
+        if (friends.contains(targetUuid)) {
+            friends.remove(targetUuid)
+            return FriendResult.REMOVED
+        }
+
+        // Check if there's an outgoing request
+        if (outgoingRequests.contains(targetUuid)) {
+            outgoingRequests.remove(targetUuid)
+            return FriendResult.CANCELLED_OUTGOING
+        }
+
+        // Check if there's an incoming request
+        if (incomingRequests.contains(targetUuid)) {
+            incomingRequests.remove(targetUuid)
+            return FriendResult.CANCELLED_INCOMING
+        }
+
+        return FriendResult.NOT_FOUND
+    }
+
+    /**
+     * Removes a friend or cancels a friend request
+     *
+     * @param targetProfile The profile of the player to remove
+     * @return A FriendResult indicating the outcome of the operation
+     */
+    fun removeFriend(targetProfile: Profile): FriendResult {
+        val result = removeFriend(targetProfile.uuid)
+
+        // If they were a friend, also remove from their friend list
+        if (result == FriendResult.REMOVED) {
+            targetProfile.friends.remove(this.uuid)
+        }
+
+        // If we had an outgoing request, remove the incoming request from their side
+        if (result == FriendResult.CANCELLED_OUTGOING) {
+            targetProfile.incomingRequests.remove(this.uuid)
+        }
+
+        // If we had an incoming request, remove the outgoing request from their side
+        if (result == FriendResult.CANCELLED_INCOMING) {
+            targetProfile.outgoingRequests.remove(this.uuid)
+        }
+
+        return result
+    }
+
+    /**
+     * Updates the in-memory cache of friends' last seen timestamps from Redis
+     * This method should be called to refresh the cache when needed
+     *
+     * @param mythLink The MythLink instance to access Redis
+     */
+    fun updateFriendsLastSeenFromRedis(mythLink: MythLink) {
+        friendsLastSeen.clear()
+
+        // Load all friends' last seen times from Redis
+        val redisData = mythLink.lettuceCache.getFriendsLastSeen(this.uuid)
+        friendsLastSeen.putAll(redisData)
+
+        // Filter to keep only actual friends
+        val friendIds = getFriends()
+        friendsLastSeen.keys.retainAll(friendIds)
+
+        mythLink.logger.debug("Loaded ${friendsLastSeen.size} friend last seen times from Redis for ${this.username}")
+    }
+
+    /**
+     * Updates a friend's last seen time and caches it in Redis
+     *
+     * @param friendId The UUID of the friend
+     * @param lastSeen The last seen timestamp
+     * @param mythLink The MythLink instance to access Redis
+     * @return true if updated, false if the player is not a friend
+     */
+    fun updateFriendLastSeen(friendId: UUID, lastSeen: Instant, mythLink: MythLink): Boolean {
+        if (!isFriend(friendId)) {
+            return false
+        }
+
+        // Update in-memory cache
+        friendsLastSeen[friendId] = lastSeen
+
+        // Update in Redis
+        mythLink.lettuceCache.cacheFriendLastSeen(this.uuid, friendId, lastSeen.toEpochMilli())
+        return true
+    }
+
+    /**
+     * Gets the last seen timestamp for a friend
+     * Returns null if the player is not a friend or their last seen info is not cached
+     *
+     * @param friendId UUID of the friend to check
+     * @return The last seen timestamp, or null if not available
+     */
+    fun getFriendLastSeen(friendId: UUID): Instant? {
+        if (!isFriend(friendId)) {
+            return null
+        }
+
+        return friendsLastSeen[friendId]
+    }
+
+    /**
+     * Gets all cached friends' last seen timestamps
+     *
+     * @return An unmodifiable map of friend UUIDs to their last seen times
+     */
+    fun getAllFriendsLastSeen(): Map<UUID, Instant> {
+        return Collections.unmodifiableMap(friendsLastSeen)
+    }
+
+    /**
+     * Clears the friends' last seen cache
+     */
+    fun clearFriendsLastSeenCache() {
+        friendsLastSeen.clear()
+    }
+
+    /**
+     * Gets an unmodifiable set of friends' UUIDs
+     *
+     * @return Set of friends' UUIDs
+     */
+    fun getFriends(): Set<UUID> {
+        return Collections.unmodifiableSet(friends)
+    }
+
+    /**
+     * Gets an unmodifiable set of incoming friend requests
+     *
+     * @return Set of UUIDs of players who have sent a friend request
+     */
+    fun getIncomingRequests(): Set<UUID> {
+        return Collections.unmodifiableSet(incomingRequests)
+    }
+
+    /**
+     * Gets an unmodifiable set of outgoing friend requests
+     *
+     * @return Set of UUIDs of players to whom a friend request has been sent
+     */
+    fun getOutgoingRequests(): Set<UUID> {
+        return Collections.unmodifiableSet(outgoingRequests)
+    }
+
+    /**
+     * Checks if a player is a friend
+     *
+     * @param uuid The UUID of the player to check
+     * @return true if the player is a friend, false otherwise
+     */
+    fun isFriend(uuid: UUID): Boolean {
+        return friends.contains(uuid)
+    }
+
+    /**
+     * Checks if there is an incoming friend request from a player
+     *
+     * @param uuid The UUID of the player to check
+     * @return true if there is an incoming request, false otherwise
+     */
+    fun hasIncomingRequest(uuid: UUID): Boolean {
+        return incomingRequests.contains(uuid)
+    }
+
+    /**
+     * Checks if there is an outgoing friend request to a player
+     *
+     * @param uuid The UUID of the player to check
+     * @return true if there is an outgoing request, false otherwise
+     */
+    fun hasOutgoingRequest(uuid: UUID): Boolean {
+        return outgoingRequests.contains(uuid)
+    }
 }
