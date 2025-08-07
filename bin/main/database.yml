@@ -1,0 +1,13 @@
+# Database Configuration File
+
+# MongoDB Configuration
+mongodb:
+  host: localhost
+  port: 27017
+
+# Redis Configuration
+redis:
+  host: localhost
+  port: 6379
+  username: "default"
+  password: "mysecretpassword"

@@ -1,1 +1,1 @@
-rootProject.name = "MythLink"
+rootProject.name = "Radium"

@@ -11,7 +11,7 @@ plugins {
     id("xyz.jpenilla.run-velocity") version "2.3.1"
 }
 
-group = "twizzy.tech"
+group = "radium.backend"
 version = "1.0-SNAPSHOT"
 
 repositories {
