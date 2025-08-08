@@ -150,6 +150,9 @@ class StaffManager(private val radium: Radium) {
             }
         }
         
+        // Notify MythicHub about vanish status change
+        radium.proxyCommunicationManager.notifyVanishChange(player, true)
+        
         return true
     }
 
@@ -183,6 +186,9 @@ class StaffManager(private val radium: Radium) {
                 // The tab list entry will be automatically re-added by Velocity
             }
         }
+        
+        // Notify MythicHub about vanish status change
+        radium.proxyCommunicationManager.notifyVanishChange(player, false)
         
         return true
     }
@@ -246,7 +252,7 @@ class StaffManager(private val radium: Radium) {
         radium.logger.info((staffPrefix.append(message)))
     }
 
-    @Subscribe(priority = 100) // High priority to ensure this runs before other chat handlers
+    @Subscribe(priority = 1000) // Very high priority to run before other chat handlers
     fun staffChatListener(event: PlayerChatEvent) {
         val player = event.player
         val message = event.message
@@ -254,7 +260,15 @@ class StaffManager(private val radium: Radium) {
 
         // Only process messages from players who are both in the listening channel and talking mode
         if (status?.isTalking == true) {
-            event.result = PlayerChatEvent.ChatResult.denied()
+            // For 1.19.1+ compatibility: Try to suppress without changing the message content
+            // This is still problematic but necessary for staff chat functionality
+            try {
+                event.result = PlayerChatEvent.ChatResult.message("")
+            } catch (e: Exception) {
+                // If modifying the event fails due to signed messages, log and let it pass through
+                radium.logger.warn("Could not suppress staff chat message due to signed chat restrictions: ${e.message}")
+                return
+            }
 
             // Launch coroutine to handle async profile lookup
             GlobalScope.launch {

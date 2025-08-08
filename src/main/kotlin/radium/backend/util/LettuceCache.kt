@@ -114,6 +114,15 @@ class LettuceCache(val logger: ComponentLogger) {
     }
 
     /**
+     * Gets the Redis client for pub/sub connections
+     * @return Redis client
+     * @throws IllegalStateException if not connected to Redis
+     */
+    fun getRedisClient(): RedisClient {
+        return client ?: throw IllegalStateException("Redis client is not available. Call connect() first.")
+    }
+
+    /**
      * Gets the synchronous Redis commands interface
      * @return Redis synchronous commands
      * @throws IllegalStateException if not connected to Redis

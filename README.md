@@ -28,6 +28,12 @@ A comprehensive staff management plugin for Velocity proxy servers with advanced
 - **Staff Chat**: `/staffchat` with toggle and hide features
 - **Vanish Control**: `/vanish`, `/vanish auto`, `/vanish list`
 
+### 💬 Player Commands
+- **Cross-Server Messaging**: `/msg`, `/tell`, `/whisper` for private messages
+- **Reply System**: `/reply`, `/r` to respond to messages
+- **Friend System**: `/friend add/remove/list` for friend management
+- **Server Information**: `/lastseen` to check player activity
+
 ### 🗄️ Database Integration
 - **MongoDB**: Primary data storage with reactive streams
 - **Redis**: High-performance caching layer
@@ -89,6 +95,30 @@ creative = "127.0.0.1:25568"
 try = ["lobby"]
 ```
 
+**For Minestom Backend Servers (MythicHub Integration):**
+- Use `player-info-forwarding-mode = "none"` in `velocity.toml`
+- Radium provides Redis-based communication for MythicHub integration
+- **Chat Formatting**: Enabled on hub server, disabled on backend servers for Minecraft 1.19.1+ signed chat compatibility
+- Available Redis channels for RadiumClient:
+  - `radium:proxy:request` - Server list, player count requests
+  - `radium:server:transfer` - Player server transfers
+  - `radium:player:permission:check` - Permission checks
+  - `radium:player:profile:request` - Player profile data
+  - `radium:player:vanish` - Vanish status notifications
+  - `radium:command:execute` - Forward staff commands to proxy
+  - `radium:player:message` - Cross-server private messaging
+- Configure your Minestom server to disable forwarding:
+  ```kotlin
+  // In your Minestom server setup
+  val server = MinecraftServer.init()
+  server.setBungeeCord(false) // Disable forwarding
+  ```
+- Ensure Velocity has `online-mode = true` for authentication
+
+### ⚠️ Important Notes
+
+**Chat Formatting**: Chat formatting is enabled on the hub server using rank-based prefixes and colors from `lang.yml`. It's disabled on backend servers to prevent protocol errors with Minecraft 1.19.1+ signed chat messages. Staff chat functionality remains available on all servers.
+
 ## 📖 Documentation
 
 ### Permission Structure
@@ -97,12 +127,20 @@ All commands follow the pattern: `radium.<command>.<subcommand>`
 **Base Permission**: `radium.staff` (required for all staff commands)
 
 **Command Permissions**:
+
+**Staff Commands** (require `radium.staff` base permission):
 - `radium.gamemode.use` - Basic gamemode command
 - `radium.gamemode.creative` - `/gmc` shortcut
 - `radium.vanish.use` - Toggle vanish mode
 - `radium.vanish.see` - See all vanished players (admin override)
 - `radium.permission.add` - Add permissions to players
 - `radium.rank.create` - Create new ranks
+
+**Player Commands** (no special permissions required):
+- `/msg`, `/tell`, `/whisper` - Cross-server private messaging
+- `/reply`, `/r` - Reply to messages
+- `/friend` - Friend system commands
+- `/lastseen` - Check player activity
 
 See [PERMISSIONS.md](PERMISSIONS.md) for complete documentation.
 

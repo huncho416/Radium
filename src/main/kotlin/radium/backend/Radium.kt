@@ -45,6 +45,7 @@ import radium.backend.player.TabListManager
 import radium.backend.player.staff.StaffManager
 import radium.backend.util.LettuceCache
 import radium.backend.util.MongoStream
+import radium.backend.util.ProxyCommunicationManager
 import radium.backend.util.YamlFactory
 
 @Plugin(
@@ -67,6 +68,8 @@ class Radium @Inject constructor(
     val staffManager = StaffManager(this)
     val chatManager = ChatManager(this)
     val tabListManager = TabListManager(this)
+    var messageCommand: Message? = null
+    lateinit var proxyCommunicationManager: ProxyCommunicationManager
     private var syncTaskRunning = false
 
     // Sync intervals (in milliseconds)
@@ -129,7 +132,8 @@ class Radium @Inject constructor(
         lamp.register(Rank(this))
         lamp.register(Grant(this))
         lamp.register(Revoke(this))
-        lamp.register(Message(this))
+        messageCommand = Message(this)
+        lamp.register(messageCommand!!)
         lamp.register(Reload(this))
         lamp.register(StaffChat(this))
         lamp.register(LastSeen(this))
@@ -215,6 +219,9 @@ class Radium @Inject constructor(
 
     @Subscribe
     fun onProxyInitialization(event: ProxyInitializeEvent) {
+        // Initialize proxy communication manager
+        proxyCommunicationManager = ProxyCommunicationManager(this, server, logger, scope, lettuceCache.getRedisClient())
+        
         // Initialize RankManager - load ranks from MongoDB into memory
         scope.launch {
             try {
@@ -228,6 +235,10 @@ class Radium @Inject constructor(
         server.eventManager.register(this, staffManager)
         server.eventManager.register(this, chatManager)
         server.eventManager.register(this, tabListManager)
+        
+        // Initialize proxy communication for MythicHub integration
+        proxyCommunicationManager.initialize()
+        
         startSyncTask()
     }
 
@@ -376,6 +387,13 @@ class Radium @Inject constructor(
                     lettuceCache.close()
                 } catch (e: Exception) {
                     logger.error("Error while closing Redis connection", e)
+                }
+
+                try {
+                    logger.info("Shutting down proxy communication...")
+                    proxyCommunicationManager.shutdown()
+                } catch (e: Exception) {
+                    logger.error("Error while shutting down proxy communication", e)
                 }
 
                 logger.info("Database connections closed successfully")
