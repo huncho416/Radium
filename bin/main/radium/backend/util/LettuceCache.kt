@@ -206,15 +206,21 @@ class LettuceCache(val logger: ComponentLogger) {
      */
     fun cacheProfile(profile: radium.backend.player.Profile, expireSeconds: Long = 1800) {
         try {
-            val key = "profile:${profile.uuid}"
             val jsonData = serializeProfile(profile)
+            
+            // Store under both key formats for compatibility
+            val radiumKey = "profile:${profile.uuid}"        // Original Radium format
+            val mythicKey = "radium:profile:${profile.uuid}"  // MythicHub expected format
 
-            sync().set(key, jsonData)
+            // Set both keys with the same data
+            sync().set(radiumKey, jsonData)
+            sync().set(mythicKey, jsonData)
 
-            // Set expiration (default 30 minutes)
-            sync().expire(key, expireSeconds)
+            // Set expiration for both keys (default 30 minutes)
+            sync().expire(radiumKey, expireSeconds)
+            sync().expire(mythicKey, expireSeconds)
 
-            logger.info(Component.text("Cached profile for ${profile.username} (${profile.uuid}) in Redis with TTL of ${expireSeconds}s", NamedTextColor.GREEN))
+            logger.info(Component.text("Cached profile for ${profile.username} (${profile.uuid}) in Redis under both key formats with TTL of ${expireSeconds}s", NamedTextColor.GREEN))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to cache profile in Redis: ${e.message}", NamedTextColor.RED), e)
         }
@@ -227,10 +233,18 @@ class LettuceCache(val logger: ComponentLogger) {
      */
     fun getProfile(uuid: java.util.UUID): Pair<radium.backend.player.Profile?, Map<String, Any?>> {
         try {
-            val key = "profile:$uuid"
+            val radiumKey = "profile:$uuid"
+            val mythicKey = "radium:profile:$uuid"
 
-            // Get the profile data from Redis
-            val jsonData = sync().get(key)
+            // Try the primary Radium key first
+            var jsonData = sync().get(radiumKey)
+            var usedKey = radiumKey
+            
+            // If not found, try the MythicHub format
+            if (jsonData == null) {
+                jsonData = sync().get(mythicKey)
+                usedKey = mythicKey
+            }
 
             if (jsonData == null) {
                 return Pair(null, mapOf(
@@ -240,7 +254,7 @@ class LettuceCache(val logger: ComponentLogger) {
             }
 
             // Get the TTL of the key to include in metadata
-            val ttl = sync().ttl(key)
+            val ttl = sync().ttl(usedKey)
             val profile = deserializeProfile(jsonData)
 
             if (profile == null) {
@@ -248,14 +262,16 @@ class LettuceCache(val logger: ComponentLogger) {
                 return Pair(null, mapOf(
                     "found" to false,
                     "reason" to "corrupted_data",
-                    "ttl" to ttl
+                    "ttl" to ttl,
+                    "key_used" to usedKey
                 ))
             }
 
             return Pair(profile, mapOf(
                 "found" to true,
                 "ttl" to ttl,
-                "source" to "redis"
+                "source" to "redis",
+                "key_used" to usedKey
             ))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to retrieve profile from Redis: ${e.message}", NamedTextColor.RED), e)
@@ -273,9 +289,14 @@ class LettuceCache(val logger: ComponentLogger) {
      */
     fun removeProfile(uuid: java.util.UUID) {
         try {
-            val key = "profile:$uuid"
-            sync().del(key)
-            logger.info(Component.text("Removed profile for $uuid from Redis", NamedTextColor.GREEN))
+            val radiumKey = "profile:$uuid"
+            val mythicKey = "radium:profile:$uuid"
+            
+            // Remove both key formats
+            val deletedRadium = sync().del(radiumKey)
+            val deletedMythic = sync().del(mythicKey)
+            
+            logger.info(Component.text("Removed profile for $uuid from Redis (radium key: $deletedRadium, mythic key: $deletedMythic)", NamedTextColor.GREEN))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to remove profile from Redis: ${e.message}", NamedTextColor.RED), e)
         }
@@ -377,6 +398,23 @@ class LettuceCache(val logger: ComponentLogger) {
         } catch (e: Exception) {
             logger.error(Component.text("Failed to retrieve friend's last seen time from Redis: ${e.message}", NamedTextColor.RED), e)
             return null
+        }
+    }
+
+    /**
+     * Publishes a profile update notification to Redis
+     * This notifies other servers (like MythicHub) that a profile has been updated and they should clear their cache
+     *
+     * @param playerUuid The UUID of the player whose profile was updated
+     */
+    fun publishProfileUpdate(playerUuid: String) {
+        try {
+            val channel = "radium:profile:updated"
+            val message = playerUuid
+            val result = sync().publish(channel, message)
+            logger.debug("Published profile update notification for $playerUuid to channel $channel (subscribers: $result)")
+        } catch (e: Exception) {
+            logger.warn(Component.text("Failed to publish profile update notification for $playerUuid: ${e.message}", NamedTextColor.YELLOW), e)
         }
     }
 }

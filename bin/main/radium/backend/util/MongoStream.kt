@@ -13,6 +13,8 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import org.bson.Document
 import org.yaml.snakeyaml.Yaml
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
@@ -86,21 +88,27 @@ class MongoStream(val logger: ComponentLogger) {
                 val port = mongoConfig["port"] as Int? ?: 27017
                 val username = mongoConfig["username"] as String?
                 val password = mongoConfig["password"] as String?
+                val database = mongoConfig["database"] as String? ?: "radium"
                 val connectionStringBuilder = StringBuilder("mongodb://")
 
                 // Add authentication if provided
                 if (username != null && password != null) {
-                    connectionStringBuilder.append("$username:****@")
+                    // For simple passwords, try without URL encoding first
+                    connectionStringBuilder.append("$username:$password@")
                     logger.info(Component.text("Using authentication with username: $username", NamedTextColor.YELLOW))
                 }
 
                 // Add host and port
                 connectionStringBuilder.append("$host:$port")
+                
+                // Add database and authentication source - use admin for auth but radium for operations
+                connectionStringBuilder.append("/$database?authSource=admin")
 
                 // Create connection string
                 val connectionString = ConnectionString(connectionStringBuilder.toString())
+                logger.info(Component.text("MongoDB connection string: mongodb://$username:****@$host:$port/$database?authSource=admin", NamedTextColor.YELLOW))
 
-                // Build client settings
+                // Build client settings with specific authentication configuration
                 val settings = MongoClientSettings.builder()
                     .applyConnectionString(connectionString)
                     .build()
@@ -111,8 +119,8 @@ class MongoStream(val logger: ComponentLogger) {
 
                 // Validate connection by accessing server information
                 try {
-                    // Simple command to verify connection
-                    client!!.getDatabase("admin").runCommand(Document("ping", 1))
+                    // Simple command to verify connection using the specified database
+                    client!!.getDatabase(database).runCommand(Document("ping", 1))
                 } catch (e: Exception) {
                     logger.error(Component.text("Failed to ping MongoDB server. Connection may be unstable.", NamedTextColor.RED), e)
                 }
@@ -167,6 +175,7 @@ class MongoStream(val logger: ComponentLogger) {
      * @throws IllegalStateException if not connected to a database
      */
     fun getDatabase(): MongoDatabase {
+        logger.info(Component.text("getDatabase() called - database is ${if (database != null) "not null" else "null"}", NamedTextColor.YELLOW))
         return database ?: throw IllegalStateException("Not connected to a database. Call connect() first.")
     }
 
@@ -206,7 +215,7 @@ class MongoStream(val logger: ComponentLogger) {
      */
     suspend fun loadProfileFromDatabase(uuid: String): Pair<radium.backend.player.Profile?, Map<String, Any?>> {
         try {
-            val filter = com.mongodb.client.model.Filters.eq("_id", uuid)
+            val filter = com.mongodb.client.model.Filters.eq("uuid", uuid)
             val document = getDatabase().getCollection(PROFILES_COLLECTION).find(filter).first()
                 .awaitFirstOrNull()
 
@@ -217,6 +226,11 @@ class MongoStream(val logger: ComponentLogger) {
                     "uuid" to uuid
                 ))
             }
+
+            // Debug the raw document before conversion
+            logger.info("Raw MongoDB document: $document")
+            logger.info("Document ranks field: ${document["ranks"]}")
+            logger.info("Document ranks type: ${document["ranks"]?.javaClass?.simpleName}")
 
             val profile = documentToProfile(document)
             return Pair(profile, mapOf(
@@ -255,7 +269,35 @@ class MongoStream(val logger: ComponentLogger) {
     fun documentToProfile(document: org.bson.Document): radium.backend.player.Profile {
         // Convert Document to Map and use Profile's fromMap method
         @Suppress("UNCHECKED_CAST")
-        val dataMap = document.toMutableMap() as Map<String, Any>
-        return radium.backend.player.Profile.fromMap(dataMap)
+        val dataMap = document.toMutableMap() as MutableMap<String, Any>
+        
+        // Debug logging for profile conversion
+        logger.info("Converting MongoDB document to Profile:")
+        logger.info("  UUID: ${dataMap["uuid"]}")
+        logger.info("  Username: ${dataMap["username"]}")
+        logger.info("  Raw document ranks: ${document["ranks"]}")
+        logger.info("  Raw document ranks type: ${document["ranks"]?.javaClass?.simpleName}")
+        logger.info("  Ranks in dataMap: ${dataMap["ranks"]}")
+        logger.info("  Ranks type: ${dataMap["ranks"]?.javaClass?.simpleName}")
+        
+        // Manual fix for ranks field - extract directly from document
+        val ranksFromDocument = document["ranks"]
+        logger.info("  Direct ranks extraction: $ranksFromDocument")
+        logger.info("  Direct ranks type: ${ranksFromDocument?.javaClass?.simpleName}")
+        
+        if (ranksFromDocument is List<*>) {
+            @Suppress("UNCHECKED_CAST")
+            val ranksList = ranksFromDocument as List<String>
+            dataMap["ranks"] = ranksList
+            logger.info("  Fixed ranks in dataMap: ${dataMap["ranks"]}")
+        }
+        
+        val profile = radium.backend.player.Profile.fromMap(dataMap)
+        
+        logger.info("After fromMap conversion:")
+        logger.info("  Profile ranks: ${profile.getRanks()}")
+        logger.info("  Profile ranks size: ${profile.getRanks().size}")
+        
+        return profile
     }
 }

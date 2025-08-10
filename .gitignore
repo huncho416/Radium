@@ -48,6 +48,14 @@ hs_err_pid*
 # .nfs files are created when an open file is removed but is still being accessed
 .nfs*
 
+# Docker and Environment files
+.env
+.env.local
+.env.production
+.env.staging
+docker-compose.override.yml
+admin_setup.js
+
 # General
 .DS_Store
 .AppleDouble

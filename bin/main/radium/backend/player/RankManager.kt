@@ -37,15 +37,36 @@ class RankManager(private val mongoStream: MongoStream) {
      */
     suspend fun initialize() {
         try {
-            // First, check if the ranks collection exists
-            val collections = mongoStream.getDatabase().listCollectionNames().asFlow().toList()
-            val collectionExists = collections.any { it == RANKS_COLLECTION }
+            // Ensure MongoDB connection is established
+            mongoStream.logger.info(Component.text("RankManager: Ensuring MongoDB connection...", NamedTextColor.YELLOW))
+            val database = mongoStream.connectToDatabase()
+            mongoStream.logger.info(Component.text("RankManager: MongoDB connection established", NamedTextColor.GREEN))
+            
+            // Add a small delay to let connections stabilize
+            kotlinx.coroutines.delay(100)
+            
+            // First, check if the ranks collection exists with retry logic
+            var collections: List<String>? = null
+            for (attempt in 1..3) {
+                try {
+                    collections = database.listCollectionNames().asFlow().toList()
+                    break
+                } catch (e: Exception) {
+                    mongoStream.logger.warn(Component.text("Attempt $attempt failed to list collections: ${e.message}", NamedTextColor.YELLOW))
+                    if (attempt == 3) throw e
+                    kotlinx.coroutines.delay(1000)
+                }
+            }
+            
+            val collectionExists = collections?.any { it == RANKS_COLLECTION } ?: false
             if (!collectionExists) {
                 mongoStream.logger.warn(Component.text("Ranks collection does not exist in the database. It will be created.", NamedTextColor.YELLOW))
             }
 
             // Clear existing cache
-            cachedRanks.clear()        // Load all ranks from MongoDB
+            cachedRanks.clear()
+
+            // Load all ranks from MongoDB
         val ranks = loadRanksFromMongo()
 
         // If no ranks exist, create default ranks
@@ -402,42 +423,49 @@ class RankManager(private val mongoStream: MongoStream) {
      * @return List of ranks sorted by weight in descending order
      */
     suspend fun listRanksByWeight(): List<Rank> {
-        try {
-            // Debug logging about the database query
-            mongoStream.logger.info(Component.text("Fetching ranks from MongoDB collection: $RANKS_COLLECTION", NamedTextColor.YELLOW))
+        for (attempt in 1..3) {
+            try {
+                // Debug logging about the database query
+                mongoStream.logger.info(Component.text("Fetching ranks from MongoDB collection: $RANKS_COLLECTION (attempt $attempt)", NamedTextColor.YELLOW))
 
-            val documents = mongoStream.getDatabase().getCollection(RANKS_COLLECTION)
-                .find()
-                .sort(Document("weight", -1))  // Sort by weight in descending order
-                .asFlow()
-                .toList()
-            // If no documents are found, log this as it might indicate an issue
-            if (documents.isEmpty()) {
-                mongoStream.logger.warn(Component.text("No ranks found in MongoDB collection $RANKS_COLLECTION", NamedTextColor.YELLOW))
-                // Try to list all collections to see if ours exists
-                val collections = mongoStream.getDatabase().listCollectionNames().asFlow().toList()
-                mongoStream.logger.info(Component.text("Available collections: ${collections.joinToString()}", NamedTextColor.YELLOW))
-            }
-
-            // Process each document with error handling
-            val ranks = mutableListOf<Rank>()
-            documents.forEachIndexed { index, document ->
-                try {
-                    val rank = documentToRank(document)
-                    ranks.add(rank)
-                    mongoStream.logger.debug(Component.text("Loaded rank: ${rank.name} (weight: ${rank.weight})", NamedTextColor.GREEN))
-                } catch (e: Exception) {
-                    mongoStream.logger.error(Component.text("Failed to convert document at index $index to rank: ${e.message}", NamedTextColor.RED))
-                    mongoStream.logger.debug(Component.text("Document content: $document", NamedTextColor.RED))
+                val documents = mongoStream.getDatabase().getCollection(RANKS_COLLECTION)
+                    .find()
+                    .sort(Document("weight", -1))  // Sort by weight in descending order
+                    .asFlow()
+                    .toList()
+                // If no documents are found, log this as it might indicate an issue
+                if (documents.isEmpty()) {
+                    mongoStream.logger.warn(Component.text("No ranks found in MongoDB collection $RANKS_COLLECTION", NamedTextColor.YELLOW))
+                    // Try to list all collections to see if ours exists
+                    val collections = mongoStream.getDatabase().listCollectionNames().asFlow().toList()
+                    mongoStream.logger.info(Component.text("Available collections: ${collections.joinToString()}", NamedTextColor.YELLOW))
                 }
-            }
 
-            return ranks
-        } catch (e: Exception) {
-            mongoStream.logger.error(Component.text("Error fetching ranks from MongoDB: ${e.message}", NamedTextColor.RED), e)
-            // Return empty list as fallback - we'll create a default rank later
-            return emptyList()
+                // Process each document with error handling
+                val ranks = mutableListOf<Rank>()
+                documents.forEachIndexed { index, document ->
+                    try {
+                        val rank = documentToRank(document)
+                        ranks.add(rank)
+                        mongoStream.logger.debug(Component.text("Loaded rank: ${rank.name} (weight: ${rank.weight})", NamedTextColor.GREEN))
+                    } catch (e: Exception) {
+                        mongoStream.logger.error(Component.text("Failed to convert document at index $index to rank: ${e.message}", NamedTextColor.RED))
+                        mongoStream.logger.debug(Component.text("Document content: $document", NamedTextColor.RED))
+                    }
+                }
+
+                mongoStream.logger.info(Component.text("Successfully loaded ${ranks.size} ranks from database", NamedTextColor.GREEN))
+                return ranks
+            } catch (e: Exception) {
+                mongoStream.logger.warn(Component.text("Attempt $attempt to load ranks failed: ${e.message}", NamedTextColor.YELLOW))
+                if (attempt == 3) {
+                    mongoStream.logger.error(Component.text("All attempts to load ranks failed. Using empty ranks list.", NamedTextColor.RED))
+                    return emptyList()
+                }
+                kotlinx.coroutines.delay(1000)
+            }
         }
+        return emptyList()
     }
 
     /**

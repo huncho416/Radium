@@ -4,10 +4,13 @@
 mongodb:
   host: localhost
   port: 27017
+  # username: "radium_admin"
+  # password: "YKYr5vCpKPZxM5loU7TWAbVU"
+  database: "radium"
 
 # Redis Configuration
 redis:
   host: localhost
   port: 6379
   username: "default"
-  password: "mysecretpassword"
+  password: "P3XWLBKRFpEROPqaLfq7JKyn"

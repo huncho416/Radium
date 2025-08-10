@@ -89,7 +89,15 @@ class Radium @Inject constructor(
         yamlFactory.initConfigurations()
 
         mongoStream.initializeDatabases()
-        lettuceCache.connect()
+        
+        // Try to connect to Redis, but continue without it if it fails
+        try {
+            lettuceCache.connect()
+        } catch (e: Exception) {
+            logger.warn(Component.text("Failed to connect to Redis. Continuing without Redis functionality.", NamedTextColor.YELLOW))
+            logger.warn(Component.text("Cross-server messaging will not work until Redis is properly configured.", NamedTextColor.YELLOW))
+            logger.warn(Component.text("Error: ${e.message}", NamedTextColor.RED))
+        }
 
         val lamp = VelocityLamp.builder(this, server)
             .suggestionProviders { providers ->

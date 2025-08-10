@@ -260,18 +260,40 @@ class StaffManager(private val radium: Radium) {
 
         // Only process messages from players who are both in the listening channel and talking mode
         if (status?.isTalking == true) {
-            // For 1.19.1+ compatibility: Try to suppress without changing the message content
-            // This is still problematic but necessary for staff chat functionality
+            radium.logger.info("[SC] ${player.username} → $message")
+            
+            // COMPLETELY DISABLED: Chat event modification for Minecraft 1.19.1+ compatibility
+            // Any modification to PlayerChatEvent.result causes "illegal protocol state" errors
+            // Staff chat messages will appear in both staff chat and public chat until a better solution is found
+            radium.logger.warn("Staff chat detected but chat suppression disabled for 1.19.1+ compatibility")
+            
+            /* DISABLED: All chat event modification causes disconnects in 1.19.1+
             try {
-                event.result = PlayerChatEvent.ChatResult.message("")
+                // First try denying the event completely
+                event.result = PlayerChatEvent.ChatResult.denied()
             } catch (e: Exception) {
-                // If modifying the event fails due to signed messages, log and let it pass through
-                radium.logger.warn("Could not suppress staff chat message due to signed chat restrictions: ${e.message}")
-                return
+                try {
+                    // If denied() doesn't work, try empty message
+                    event.result = PlayerChatEvent.ChatResult.message("")
+                } catch (e2: Exception) {
+                    // If both approaches fail, log but continue with staff chat
+                    radium.logger.warn("Could not suppress staff chat message due to signed chat restrictions. Message will appear in both staff and public chat.")
+                }
             }
+            */
 
-            // Launch coroutine to handle async profile lookup
-            GlobalScope.launch {
+            // Send to staff chat (this will work regardless of chat suppression)
+            sendStaffChatMessage(player, message)
+        }
+    }
+    
+    /**
+     * Sends a message to staff chat with proper formatting
+     */
+    private fun sendStaffChatMessage(player: Player, message: String) {
+        // Launch coroutine to handle async profile lookup
+        GlobalScope.launch {
+            try {
                 // Get player profile to access rank information
                 val profile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
                 if (profile != null) {
@@ -299,6 +321,8 @@ class StaffManager(private val radium: Radium) {
                     )
                     sendStaffMessage(chatFormat)
                 }
+            } catch (e: Exception) {
+                radium.logger.warn("Failed to send staff chat message from ${player.username}: ${e.message}")
             }
         }
     }

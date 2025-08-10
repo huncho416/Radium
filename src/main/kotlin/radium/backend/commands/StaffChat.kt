@@ -26,9 +26,16 @@ class StaffChat(private val radium: Radium) {
         staffManager.setTalking(actor, !isTalking)
 
         if (staffManager.isTalking(actor)) {
-            actor.sendMessage(yamlFactory.getMessageComponent("staff.chat_enabled"))
+            // Note: Due to 1.19.1+ signed chat restrictions, we can't intercept regular chat
+            // Users must use /sc <message> to send staff chat messages
+            actor.sendMessage(Component.text()
+                .append(Component.text("Staff chat listening enabled! ", NamedTextColor.GREEN))
+                .append(Component.text("Use ", NamedTextColor.GRAY))
+                .append(Component.text("/sc <message>", NamedTextColor.YELLOW))
+                .append(Component.text(" to send staff messages.", NamedTextColor.GRAY))
+                .build())
         } else {
-            actor.sendMessage(yamlFactory.getMessageComponent("staff.chat_disabled"))
+            actor.sendMessage(Component.text("Staff chat disabled.", NamedTextColor.RED))
         }
     }
 
