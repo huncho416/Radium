@@ -10,9 +10,10 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bson.Document
 import radium.backend.util.MongoStream
+import radium.backend.util.LettuceCache
 import java.util.concurrent.ConcurrentHashMap
 
-class RankManager(private val mongoStream: MongoStream) {
+class RankManager(private val mongoStream: MongoStream, private val lettuceCache: LettuceCache) {
 
     // In-memory cache of ranks, keyed by rank name
     private val cachedRanks = ConcurrentHashMap<String, Rank>()
@@ -85,6 +86,13 @@ class RankManager(private val mongoStream: MongoStream) {
                 val adminRank = createRank("Admin", "&c[Admin] ", 100)
                 mongoStream.logger.info(Component.text("Created admin rank: ${adminRank.name}", NamedTextColor.GREEN))
 
+                val ownerRank = createRank("Owner", "&4[Owner] ", 1000)
+                mongoStream.logger.info(Component.text("Created owner rank: ${ownerRank.name}", NamedTextColor.GREEN))
+
+                // Add permissions to owner rank
+                addPermissionToRank("Owner", "*")
+                mongoStream.logger.info(Component.text("Added * permission to Owner rank", NamedTextColor.GREEN))
+
                 // Add permissions to admin rank
                 addPermissionToRank("Admin", "*")
                 mongoStream.logger.info(Component.text("Added * permission to Admin rank", NamedTextColor.GREEN))
@@ -97,7 +105,8 @@ class RankManager(private val mongoStream: MongoStream) {
                 val verifyDefault = getRank(DEFAULT_RANK_NAME)
                 val verifyMember = getRank("Member")
                 val verifyAdmin = getRank("Admin")
-                if (verifyDefault != null && verifyMember != null && verifyAdmin != null) {
+                val verifyOwner = getRank("Owner")
+                if (verifyDefault != null && verifyMember != null && verifyAdmin != null && verifyOwner != null) {
                     mongoStream.logger.info(Component.text("Verified all default ranks were successfully saved to database", NamedTextColor.GREEN))
                 } else {
                     mongoStream.logger.error(Component.text("CRITICAL: Some default ranks were not saved properly!", NamedTextColor.RED))
@@ -156,12 +165,56 @@ class RankManager(private val mongoStream: MongoStream) {
     private suspend fun loadRanksFromMongo(): List<Rank> {
         val ranks = listRanksByWeight()
 
-        // Cache all ranks
+        // Cache all ranks in memory
         ranks.forEach { rank ->
             cachedRanks[rank.name.lowercase()] = rank
         }
 
+        // Cache all ranks in Redis for MythicHub compatibility
+        try {
+            ranks.forEach { rank ->
+                cacheRankInRedis(rank)
+            }
+            mongoStream.logger.info(Component.text("Cached ${ranks.size} ranks in Redis for MythicHub compatibility", NamedTextColor.GREEN))
+        } catch (e: Exception) {
+            mongoStream.logger.warn(Component.text("Failed to cache ranks in Redis: ${e.message}", NamedTextColor.YELLOW))
+        }
+
         return ranks
+    }
+
+    /**
+     * Caches a rank in Redis using the format expected by MythicHub
+     */
+    private fun cacheRankInRedis(rank: Rank) {
+        try {
+            val key = "radium:rank:${rank.name.lowercase()}"
+            val jsonData = rankToJson(rank)
+            
+            lettuceCache.sync().set(key, jsonData)
+            lettuceCache.sync().expire(key, 3600) // 1 hour expiration
+            
+            mongoStream.logger.debug(Component.text("Cached rank ${rank.name} in Redis under key: $key", NamedTextColor.GREEN))
+        } catch (e: Exception) {
+            mongoStream.logger.warn(Component.text("Failed to cache rank ${rank.name} in Redis: ${e.message}", NamedTextColor.YELLOW))
+        }
+    }
+
+    /**
+     * Converts a rank to JSON format for Redis storage
+     */
+    private fun rankToJson(rank: Rank): String {
+        val permissionsJson = rank.permissions.joinToString(",") { "\"$it\"" }
+        return """
+        {
+            "name": "${rank.name}",
+            "prefix": "${rank.prefix}",
+            "weight": ${rank.weight},
+            "color": "${rank.color}",
+            "permissions": [$permissionsJson],
+            "inherits": [${rank.inherits.joinToString(",") { "\"$it\"" }}]
+        }
+        """.trimIndent()
     }
 
     /**
@@ -183,8 +236,10 @@ class RankManager(private val mongoStream: MongoStream) {
     suspend fun createRank(name: String, prefix: String, weight: Int, color: String = "&f"): Rank {
         val rank = Rank(name, prefix, weight, color)
         saveRank(rank)
-        // Update cache
+        // Update memory cache
         cachedRanks[name.lowercase()] = rank
+        // Update Redis cache
+        cacheRankInRedis(rank)
         return rank
     }
 

@@ -62,7 +62,7 @@ class Radium @Inject constructor(
     val lettuceCache = LettuceCache(logger)
     val yamlFactory = YamlFactory()
 
-    val rankManager = RankManager(mongoStream)
+    val rankManager = RankManager(mongoStream, lettuceCache)
 
     val connectionHandler = ConnectionHandler(this)
     val staffManager = StaffManager(this)

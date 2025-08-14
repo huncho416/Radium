@@ -45,7 +45,7 @@ import radium.backend.player.TabListManager
 import radium.backend.player.staff.StaffManager
 import radium.backend.util.LettuceCache
 import radium.backend.util.MongoStream
-import radium.backend.util.ProxyCommunicationManager
+import radium.backend.api.RadiumApiServer
 import radium.backend.util.YamlFactory
 
 @Plugin(
@@ -62,14 +62,14 @@ class Radium @Inject constructor(
     val lettuceCache = LettuceCache(logger)
     val yamlFactory = YamlFactory()
 
-    val rankManager = RankManager(mongoStream)
+    val rankManager = RankManager(mongoStream, lettuceCache)
 
     val connectionHandler = ConnectionHandler(this)
     val staffManager = StaffManager(this)
     val chatManager = ChatManager(this)
     val tabListManager = TabListManager(this)
     var messageCommand: Message? = null
-    lateinit var proxyCommunicationManager: ProxyCommunicationManager
+    lateinit var apiServer: RadiumApiServer
     private var syncTaskRunning = false
 
     // Sync intervals (in milliseconds)
@@ -227,9 +227,9 @@ class Radium @Inject constructor(
 
     @Subscribe
     fun onProxyInitialization(event: ProxyInitializeEvent) {
-        // Initialize proxy communication manager
-        proxyCommunicationManager = ProxyCommunicationManager(this, server, logger, scope, lettuceCache.getRedisClient())
-        
+        // Initialize API server (replaces MythicHub Redis integration)
+        apiServer = RadiumApiServer(this, server, logger, scope)
+
         // Initialize RankManager - load ranks from MongoDB into memory
         scope.launch {
             try {
@@ -244,9 +244,9 @@ class Radium @Inject constructor(
         server.eventManager.register(this, chatManager)
         server.eventManager.register(this, tabListManager)
         
-        // Initialize proxy communication for MythicHub integration
-        proxyCommunicationManager.initialize()
-        
+        // Start the HTTP API server
+        apiServer.start()
+
         startSyncTask()
     }
 
@@ -399,7 +399,7 @@ class Radium @Inject constructor(
 
                 try {
                     logger.info("Shutting down proxy communication...")
-                    proxyCommunicationManager.shutdown()
+                    apiServer.shutdown()
                 } catch (e: Exception) {
                     logger.error("Error while shutting down proxy communication", e)
                 }

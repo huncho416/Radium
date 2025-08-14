@@ -50,6 +50,15 @@ dependencies {
 
     // Redis Driver (Lettuce)
     implementation("io.lettuce:lettuce-core:6.3.2.RELEASE")
+
+    // HTTP Server for API
+    implementation("io.ktor:ktor-server-core:2.3.12")
+    implementation("io.ktor:ktor-server-netty:2.3.12")
+    implementation("io.ktor:ktor-server-content-negotiation:2.3.12")
+    implementation("io.ktor:ktor-serialization-gson:2.3.12")
+    implementation("io.ktor:ktor-server-cors:2.3.12")
+    implementation("io.ktor:ktor-server-auth:2.3.12")
+    implementation("io.ktor:ktor-server-status-pages:2.3.12")
 }
 
 tasks {

