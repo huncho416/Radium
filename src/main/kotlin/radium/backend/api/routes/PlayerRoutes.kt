@@ -101,8 +101,9 @@ fun Route.playerRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLog
             }
 
             try {
-                // Use the existing message command functionality
-                plugin.messageCommand?.sendDirectMessage(messageRequest.from, player, messageRequest.message)
+                // Send direct message to the player
+                val fromComponent = net.kyori.adventure.text.Component.text("<${messageRequest.from}> ${messageRequest.message}")
+                player.sendMessage(fromComponent)
                 call.respond(SuccessResponse(true, "Message sent"))
             } catch (e: Exception) {
                 logger.error("Failed to send message to player $playerName: ${e.message}", e)
@@ -124,8 +125,7 @@ fun Route.playerRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLog
                 return@get
             }
 
-            val profile = plugin.connectionHandler.getPlayerProfile(player.uniqueId)
-            val isVanished = profile?.isVanished ?: false
+            val isVanished = plugin.staffManager.isVanished(player)
 
             call.respond(VanishResponse(playerName, isVanished, true))
         }
@@ -148,9 +148,9 @@ fun Route.playerRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLog
 
             try {
                 if (vanishRequest.vanished) {
-                    plugin.staffManager.vanishPlayer(player)
+                    plugin.staffManager.vanish(player)
                 } else {
-                    plugin.staffManager.unvanishPlayer(player)
+                    plugin.staffManager.unvanish(player)
                 }
                 call.respond(VanishResponse(playerName, vanishRequest.vanished, true))
             } catch (e: Exception) {

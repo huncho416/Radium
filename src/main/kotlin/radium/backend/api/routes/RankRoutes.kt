@@ -13,13 +13,13 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
     route("/ranks") {
         // Get all ranks
         get {
-            val ranks = plugin.rankManager.ranks.map { rank ->
+            val ranks = plugin.rankManager.getCachedRanks().map { rank ->
                 RankResponse(
                     name = rank.name,
                     weight = rank.weight,
                     prefix = rank.prefix,
                     color = rank.color,
-                    permissions = rank.permissions
+                    permissions = rank.permissions.toList()
                 )
             }
 
@@ -33,7 +33,7 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
                 ErrorResponse("Missing rank parameter")
             )
 
-            val rank = plugin.rankManager.ranks.find { it.name.equals(rankName, ignoreCase = true) }
+            val rank = plugin.rankManager.getCachedRanks().find { it.name.equals(rankName, ignoreCase = true) }
             if (rank == null) {
                 call.respond(HttpStatusCode.NotFound, ErrorResponse("Rank not found"))
                 return@get
@@ -44,7 +44,7 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
                 weight = rank.weight,
                 prefix = rank.prefix,
                 color = rank.color,
-                permissions = rank.permissions
+                permissions = rank.permissions.toList()
             )
 
             call.respond(response)
@@ -57,7 +57,7 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
                 ErrorResponse("Missing rank parameter")
             )
 
-            val rank = plugin.rankManager.ranks.find { it.name.equals(rankName, ignoreCase = true) }
+            val rank = plugin.rankManager.getCachedRanks().find { it.name.equals(rankName, ignoreCase = true) }
             if (rank == null) {
                 call.respond(HttpStatusCode.NotFound, ErrorResponse("Rank not found"))
                 return@get
@@ -65,7 +65,7 @@ fun Route.rankRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogge
 
             val playersWithRank = server.allPlayers.mapNotNull { player ->
                 val profile = plugin.connectionHandler.getPlayerProfile(player.uniqueId)
-                if (profile != null && profile.ranks.contains(rank.name)) {
+                if (profile != null && profile.hasRank(rank.name)) {
                     PlayerResponse(
                         username = player.username,
                         uuid = player.uniqueId.toString(),

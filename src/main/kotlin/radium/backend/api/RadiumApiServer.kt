@@ -124,4 +124,8 @@ class RadiumApiServer(
         ktorServer?.stop(1000, 2000)
         logger.info("Radium API server stopped")
     }
+
+    fun shutdown() {
+        stop()
+    }
 }

@@ -37,7 +37,7 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
                     weight = highestRank.weight,
                     prefix = highestRank.prefix,
                     color = highestRank.color,
-                    permissions = highestRank.permissions
+                    permissions = highestRank.permissions.toList()
                 )
             } else null
 
@@ -45,11 +45,11 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
                 username = player.username,
                 uuid = player.uniqueId.toString(),
                 rank = rankResponse,
-                permissions = highestRank?.permissions ?: emptyList(),
+                permissions = highestRank?.permissions?.toList() ?: emptyList(),
                 prefix = highestRank?.prefix,
                 color = highestRank?.color,
-                isVanished = profile.isVanished,
-                lastSeen = profile.lastSeen
+                isVanished = plugin.staffManager.isVanished(player),
+                lastSeen = profile.lastSeen?.toEpochMilli()
             )
 
             call.respond(response)
@@ -85,7 +85,7 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
                     weight = highestRank.weight,
                     prefix = highestRank.prefix,
                     color = highestRank.color,
-                    permissions = highestRank.permissions
+                    permissions = highestRank.permissions.toList()
                 )
             } else null
 
@@ -93,11 +93,11 @@ fun Route.profileRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLo
                 username = profile.username,
                 uuid = uuid.toString(),
                 rank = rankResponse,
-                permissions = highestRank?.permissions ?: emptyList(),
+                permissions = highestRank?.permissions?.toList() ?: emptyList(),
                 prefix = highestRank?.prefix,
                 color = highestRank?.color,
-                isVanished = profile.isVanished,
-                lastSeen = profile.lastSeen
+                isVanished = player?.let { plugin.staffManager.isVanished(it) } ?: false,
+                lastSeen = profile.lastSeen?.toEpochMilli()
             )
 
             call.respond(response)
