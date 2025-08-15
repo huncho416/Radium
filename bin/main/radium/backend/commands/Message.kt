@@ -69,17 +69,28 @@ class Message(private val radium: Radium) {
         // Send Redis message to find and message the player on other servers
         radium.scope.launch {
             val crossServerMessage = CrossServerMessage(
-                type = "send",
+                type = "message",
                 requestId = requestId,
-                senderUuid = actor.uniqueId.toString(),
                 senderName = actor.username,
+                senderUuid = actor.uniqueId.toString(),
                 targetName = target,
                 message = message
             )
             
-            val json = gson.toJson(crossServerMessage)
-            radium.proxyCommunicationManager.publishMessage("radium:player:message", json)
-            
+            // Since we removed Redis integration, try to find the player directly
+            val targetPlayer = radium.server.getPlayer(target).orElse(null)
+            if (targetPlayer != null) {
+                // Player is online on this proxy, send message directly
+                sendDirectMessage(actor.username, targetPlayer, message)
+                pendingMessages.remove(requestId)
+            } else {
+                // Player not found on this proxy
+                val notFoundMessage = radium.yamlFactory.getMessageComponent("message.player_not_found", "player" to target)
+                actor.sendMessage(notFoundMessage)
+                pendingMessages.remove(requestId)
+                return@launch
+            }
+
             // Give it a moment to process, then check if message was delivered
             kotlinx.coroutines.delay(1000)
             if (pendingMessages.containsKey(requestId)) {
@@ -158,16 +169,9 @@ class Message(private val radium: Radium) {
                 isReply = true
             )
             
-            val json = gson.toJson(crossServerMessage)
-            radium.proxyCommunicationManager.publishMessage("radium:player:message", json)
-            
-            // Give it a moment to process
-            kotlinx.coroutines.delay(1000)
-            if (pendingMessages.containsKey(requestId)) {
-                // Reply wasn't delivered, player is offline
-                pendingMessages.remove(requestId)
-                actor.sendMessage(yamlFactory.getMessageComponent("commands.message.reply_target_offline"))
-            }
+            // Since we removed Redis integration, player is not found
+            pendingMessages.remove(requestId)
+            actor.sendMessage(yamlFactory.getMessageComponent("commands.message.reply_target_offline"))
         }
     }
 
@@ -260,19 +264,18 @@ class Message(private val radium: Radium) {
     }
     
     private fun sendMessageDeliveryConfirmation(originalMessage: CrossServerMessage) {
-        radium.scope.launch {
-            val confirmation = CrossServerMessage(
-                type = "delivered",
-                requestId = originalMessage.requestId,
-                senderUuid = originalMessage.senderUuid,
-                senderName = originalMessage.senderName,
-                targetName = originalMessage.targetName,
-                targetUuid = originalMessage.targetUuid,
-                message = originalMessage.message
-            )
-            
-            val json = gson.toJson(confirmation)
-            radium.proxyCommunicationManager.publishMessage("radium:player:message", json)
-        }
+        // Since we removed Redis integration, this method is no longer needed
+        // but kept for compatibility with the handleCrossServerMessage function
+    }
+
+    // Add the missing sendDirectMessage function
+    fun sendDirectMessage(senderName: String, targetPlayer: Player, message: String) {
+        val receiverMessage = yamlFactory.getMessageComponent("commands.message.receiver_format",
+            "sender" to senderName,
+            "message" to message
+        ).clickEvent(ClickEvent.suggestCommand("/r "))
+            .hoverEvent(HoverEvent.showText(Component.text("Click to reply")))
+
+        targetPlayer.sendMessage(receiverMessage)
     }
 }

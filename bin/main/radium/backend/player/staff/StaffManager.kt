@@ -150,8 +150,7 @@ class StaffManager(private val radium: Radium) {
             }
         }
         
-        // Notify MythicHub about vanish status change
-        radium.proxyCommunicationManager.notifyVanishChange(player, true)
+        // Player is now vanished - the API can be used to check vanish status if needed
         
         return true
     }
@@ -187,9 +186,8 @@ class StaffManager(private val radium: Radium) {
             }
         }
         
-        // Notify MythicHub about vanish status change
-        radium.proxyCommunicationManager.notifyVanishChange(player, false)
-        
+        // Player is now unvanished - the API can be used to check vanish status if needed
+
         return true
     }
 

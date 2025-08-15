@@ -47,6 +47,15 @@ import radium.backend.util.LettuceCache
 import radium.backend.util.MongoStream
 import radium.backend.api.RadiumApiServer
 import radium.backend.util.YamlFactory
+import radium.backend.punishment.PunishmentRepository
+import radium.backend.punishment.PunishmentManager
+import radium.backend.punishment.commands.Ban
+import radium.backend.punishment.commands.Mute
+import radium.backend.punishment.commands.Warn
+import radium.backend.punishment.commands.Kick
+import radium.backend.punishment.commands.Blacklist
+import radium.backend.punishment.commands.CheckPunishments
+import radium.backend.punishment.events.PunishmentListener
 
 @Plugin(
     id = "radium", name = "Radium", version = BuildConstants.VERSION
@@ -68,6 +77,12 @@ class Radium @Inject constructor(
     val staffManager = StaffManager(this)
     val chatManager = ChatManager(this)
     val tabListManager = TabListManager(this)
+
+    // Punishment System - initialized after database connection
+    lateinit var punishmentRepository: PunishmentRepository
+    lateinit var punishmentManager: PunishmentManager
+    lateinit var punishmentListener: PunishmentListener
+
     var messageCommand: Message? = null
     lateinit var apiServer: RadiumApiServer
     private var syncTaskRunning = false
@@ -148,6 +163,14 @@ class Radium @Inject constructor(
         lamp.register(Vanish(this))
         lamp.register(Friend(this))
         lamp.register(Gamemode(this))
+
+        // Register punishment commands
+        lamp.register(Ban(this))
+        lamp.register(Mute(this))
+        lamp.register(Warn(this))
+        lamp.register(Kick(this))
+        lamp.register(Blacklist(this))
+        lamp.register(CheckPunishments(this))
 
         lamp.register()
         lamp.accept(brigadier(server))
@@ -230,6 +253,18 @@ class Radium @Inject constructor(
         // Initialize API server (replaces MythicHub Redis integration)
         apiServer = RadiumApiServer(this, server, logger, scope)
 
+        // Initialize punishment system after database is connected
+        try {
+            logger.info(Component.text("Initializing punishment system...", NamedTextColor.YELLOW))
+            punishmentRepository = PunishmentRepository(mongoStream.getDatabase(), logger)
+            punishmentManager = PunishmentManager(this, punishmentRepository, logger)
+            punishmentListener = PunishmentListener(this)
+            logger.info(Component.text("Punishment system components initialized", NamedTextColor.GREEN))
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to initialize punishment system components: ${e.message}", NamedTextColor.RED), e)
+            throw e
+        }
+
         // Initialize RankManager - load ranks from MongoDB into memory
         scope.launch {
             try {
@@ -244,6 +279,19 @@ class Radium @Inject constructor(
         server.eventManager.register(this, chatManager)
         server.eventManager.register(this, tabListManager)
         
+        // Register punishment event listener
+        server.eventManager.register(this, punishmentListener)
+
+        // Initialize punishment system
+        scope.launch {
+            try {
+                punishmentManager.initialize()
+                logger.info(Component.text("Punishment system initialized successfully", NamedTextColor.GREEN))
+            } catch (e: Exception) {
+                logger.error(Component.text("Failed to initialize punishment system: ${e.message}", NamedTextColor.RED), e)
+            }
+        }
+
         // Start the HTTP API server
         apiServer.start()
 

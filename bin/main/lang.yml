@@ -355,3 +355,94 @@ reload:
     set_other: "&aSet {target}'s gamemode to {gamemode}."
     failed: "&cFailed to change gamemode."
     error: "&cError changing gamemode: {error}"
+
+# Punishment System Messages
+punishments:
+  prefix: "&c[Punish]&r "
+
+  # Command usage messages
+  commands:
+    ban:
+      usage: "&cUsage: /ban <player> [duration] <reason> [-s] [-c]"
+    unban:
+      usage: "&cUsage: /unban <player> <reason> [-s]"
+    ipban:
+      usage: "&cUsage: /ipban <player> [duration] <reason> [-s] [-c]"
+    mute:
+      usage: "&cUsage: /mute <player> [duration] <reason> [-s]"
+    unmute:
+      usage: "&cUsage: /unmute <player> <reason> [-s]"
+    warn:
+      usage: "&cUsage: /warn <player> [duration] <reason> [-s]"
+    kick:
+      usage: "&cUsage: /kick <player> <reason> [-s]"
+    blacklist:
+      usage: "&cUsage: /blacklist <player> <reason> [-s] [-c]"
+    unblacklist:
+      usage: "&cUsage: /unblacklist <player> <reason> [-s]"
+    checkpunishments:
+      usage: "&cUsage: /checkpunishments <player> [page]"
+
+  # Error messages
+  error_occurred: "&cAn error occurred while processing the punishment."
+  save_failed: "&cFailed to save punishment to database."
+  revoke_failed: "&cFailed to revoke punishment."
+  player_not_found: "&cPlayer '{player}' not found."
+  player_not_online: "&cPlayer '{player}' is not online."
+  player_must_be_online_for_ipban: "&cPlayer must be online for IP bans."
+  invalid_duration: "&cInvalid duration format: {duration}"
+  cannot_punish_self: "&cYou cannot punish yourself."
+  no_silent_permission: "&cYou don't have permission to use the silent flag."
+  no_clear_permission: "&cYou don't have permission to clear inventories."
+  already_punished: "&c{player} already has an active {type}."
+  no_active_punishment: "&c{player} does not have an active {type}."
+
+  # Success messages
+  ban_issued_temporary: "&aSuccessfully banned {player} for {duration}: {reason}"
+  ban_issued_permanent: "&aSuccessfully banned {player} permanently: {reason}"
+  unban_success: "&aSuccessfully unbanned {player}: {reason}"
+  ipban_issued: "&aSuccessfully IP-banned {player} ({ip}) for {duration}: {reason}"
+  mute_issued_temporary: "&aSuccessfully muted {player} for {duration}: {reason}"
+  mute_issued_permanent: "&aSuccessfully muted {player} permanently: {reason}"
+  unmute_success: "&aSuccessfully unmuted {player}: {reason}"
+  warn_issued: "&aSuccessfully warned {player}: {reason}"
+  warn_count: "&e{player} now has {count}/{threshold} warnings."
+  kick_issued: "&aSuccessfully kicked {player}: {reason}"
+  blacklist_issued: "&aSuccessfully blacklisted {player}: {reason}"
+  unblacklist_success: "&aSuccessfully removed {player} from blacklist: {reason}"
+  inventory_cleared: "&aCleared inventory for {player}."
+
+  # Broadcast messages
+  broadcast:
+    ban: "&c{player} was banned by {staff}: {reason}"
+    ipban: "&c{player} was IP-banned by {staff}: {reason}"
+    mute: "&e{player} was muted by {staff}: {reason}"
+    warn: "&6{player} was warned by {staff}: {reason}"
+    kick: "&b{player} was kicked by {staff}: {reason}"
+    blacklist: "&4{player} was blacklisted by {staff}: {reason}"
+
+  # Revocation messages
+  revoked: "&a{player}'s {type} was revoked by {staff}: {reason}"
+  revoked_silent: "&a{player}'s {type} was revoked by {staff}: {reason} &7(silent)"
+
+  # Silent punishment suffix
+  silent_suffix: "&7(silent)"
+
+  # Player-facing messages
+  player:
+    banned: "&cYou are banned until {expires}: {reason}"
+    banned_permanent: "&cYou are permanently banned: {reason}"
+    muted: "&cYou are muted until {expires}: {reason}"
+    muted_permanent: "&cYou are permanently muted: {reason}"
+    blacklisted: "&4You are blacklisted: {reason}"
+    kicked: "&cKicked: {reason}"
+    warn_notice: "&6You have been warned: {reason}"
+    unmuted: "&aYou have been unmuted: {reason}"
+    chat_blocked: "&cYou are muted and cannot chat."
+    chat_blocked_temporary: "&cYou are muted until {expires}: {reason}"
+
+  # Check punishments messages
+  no_punishments_found: "&e{player} has no punishment history."
+
+  # Warning escalation
+  warn_escalation: "&c{player} has reached {warnings} warnings and was automatically banned for {duration}."

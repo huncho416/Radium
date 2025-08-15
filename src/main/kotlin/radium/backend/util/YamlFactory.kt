@@ -13,6 +13,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 
 class YamlFactory {
     private val langConfig = mutableMapOf<String, Any>()
+    private val databaseConfig = mutableMapOf<String, Any>()
 
     fun initConfigurations() {
         // Initialize YAML configurations here
@@ -21,6 +22,7 @@ class YamlFactory {
         ensureDatabaseConfiguration()
         ensureLangConfiguration()
         loadLangConfiguration() // Load the language configuration after ensuring it exists
+        loadDatabaseConfiguration() // Load database configuration too
     }
 
 
@@ -103,6 +105,30 @@ class YamlFactory {
     }
 
     /**
+     * Gets the database configuration
+     */
+    fun getConfig(): Map<String, Any> {
+        return databaseConfig
+    }
+
+    /**
+     * Loads the database configuration from file
+     */
+    private fun loadDatabaseConfiguration() {
+        try {
+            val configFile = File("plugins/Radium/database.yml")
+            if (configFile.exists()) {
+                val yaml = Yaml()
+                val config = yaml.load(FileInputStream(configFile)) as Map<String, Any>? ?: emptyMap()
+                databaseConfig.clear()
+                databaseConfig.putAll(config)
+            }
+        } catch (e: Exception) {
+            // Handle error gracefully
+        }
+    }
+
+    /**
      * Get a message from the lang configuration
      * @param key The key to the message
      * @param replacements Key-value pairs for placeholder replacements
@@ -174,7 +200,83 @@ class YamlFactory {
             }
         }
 
-        return if (current is Map<*, *>) current as Map<String, Any> else emptyMap()
+        return if (current is Map<*, *>) {
+            current as Map<String, Any>
+        } else {
+            emptyMap()
+        }
+    }
+
+    /**
+     * Get an integer value from the configuration
+     * @param key The key to the value
+     * @param defaultValue Default value if key is not found
+     * @return The integer value
+     */
+    fun getInt(key: String, defaultValue: Int = 0): Int {
+        val parts = key.split(".")
+        var current: Any? = databaseConfig
+
+        for (part in parts) {
+            if (current is Map<*, *>) {
+                current = (current as Map<*, *>)[part]
+            } else {
+                return defaultValue
+            }
+        }
+
+        return when (current) {
+            is Int -> current
+            is Number -> current.toInt()
+            is String -> current.toIntOrNull() ?: defaultValue
+            else -> defaultValue
+        }
+    }
+
+    /**
+     * Get a string value from the configuration
+     * @param key The key to the value
+     * @param defaultValue Default value if key is not found
+     * @return The string value
+     */
+    fun getString(key: String, defaultValue: String = ""): String {
+        val parts = key.split(".")
+        var current: Any? = databaseConfig
+
+        for (part in parts) {
+            if (current is Map<*, *>) {
+                current = (current as Map<*, *>)[part]
+            } else {
+                return defaultValue
+            }
+        }
+
+        return current?.toString() ?: defaultValue
+    }
+
+    /**
+     * Get a boolean value from the configuration
+     * @param key The key to the value
+     * @param defaultValue Default value if key is not found
+     * @return The boolean value
+     */
+    fun getBoolean(key: String, defaultValue: Boolean = false): Boolean {
+        val parts = key.split(".")
+        var current: Any? = databaseConfig
+
+        for (part in parts) {
+            if (current is Map<*, *>) {
+                current = (current as Map<*, *>)[part]
+            } else {
+                return defaultValue
+            }
+        }
+
+        return when (current) {
+            is Boolean -> current
+            is String -> current.toBoolean()
+            else -> defaultValue
+        }
     }
 
     /**

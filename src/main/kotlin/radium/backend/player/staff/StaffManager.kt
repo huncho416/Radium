@@ -151,7 +151,7 @@ class StaffManager(private val radium: Radium) {
         }
         
         // Player is now vanished - the API can be used to check vanish status if needed
-
+        
         return true
     }
 

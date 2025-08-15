@@ -175,7 +175,7 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
             ranks.forEach { rank ->
                 cacheRankInRedis(rank)
             }
-            mongoStream.logger.info(Component.text("Cached ${ranks.size} ranks in Redis for MythicHub compatibility", NamedTextColor.GREEN))
+            mongoStream.logger.info(Component.text("Cached ${ranks.size} ranks in Redis", NamedTextColor.GREEN))
         } catch (e: Exception) {
             mongoStream.logger.warn(Component.text("Failed to cache ranks in Redis: ${e.message}", NamedTextColor.YELLOW))
         }
