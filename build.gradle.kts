@@ -52,6 +52,9 @@ dependencies {
     // Redis Driver (Lettuce)
     implementation("io.lettuce:lettuce-core:6.3.2.RELEASE")
 
+    // HTTP Client for API communication
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
     // HTTP Server for API
     implementation("io.ktor:ktor-server-core:2.3.12")
     implementation("io.ktor:ktor-server-netty:2.3.12")

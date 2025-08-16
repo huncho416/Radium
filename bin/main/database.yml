@@ -33,3 +33,9 @@ punishments:
     broadcastMute: false
     broadcastKick: false
     broadcastWarn: false
+
+# Lobby API Configuration
+lobby:
+  api:
+    url: "http://localhost:8080"
+    timeout: 5000  # milliseconds
