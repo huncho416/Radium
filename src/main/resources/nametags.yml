@@ -1,0 +1,59 @@
+# Radium Nametags Configuration
+# This file configures rank-based custom nametags using MSNameTags
+
+enabled: true
+
+# Default template when no rank-specific template is found
+# Supports MiniMessage; placeholders: <rank_name>, <rank_color>, <username>, <server>, <weight>
+default-template: "<gray><username></gray>"
+
+# Rank-specific nametag templates
+ranks:
+  OWNER:
+    template: "<#ff355e><b>OWNER</b></#ff355e> <white><username>"
+    show-to-self: true
+    show-when-vanished: false
+  ADMIN:
+    template: "<red><b>ADMIN</b></red> <white><username>"
+    show-to-self: true
+    show-when-vanished: false
+  MOD:
+    template: "<green><b>MOD</b></green> <white><username>"
+    show-to-self: true
+    show-when-vanished: false
+  HELPER:
+    template: "<blue><b>HELPER</b></blue> <white><username>"
+    show-to-self: false
+    show-when-vanished: false
+  VIP:
+    template: "<gold><b>VIP</b></gold> <white><username>"
+    show-to-self: false
+    show-when-vanished: true
+  DEFAULT:
+    template: "<gray><username></gray>"
+    show-to-self: false
+    show-when-vanished: true
+
+# Visibility and behavior settings
+visibility:
+  # Should nametags respect vanish status?
+  respect-vanish: true
+  
+  # Weight-based gating for vanished staff
+  weight-gating:
+    enabled: true
+    # Fallback template for when a vanished staff member is hidden
+    fallback-template: "<dark_gray>•</dark_gray> <gray><username>"
+
+# Performance optimization settings
+performance:
+  # Batch update delay in milliseconds to prevent spam
+  update-batch-ms: 75
+  
+  # Maximum concurrent template renders
+  max-concurrent-renders: 50
+
+# Debug settings
+debug:
+  log-template-renders: false
+  log-visibility-changes: false

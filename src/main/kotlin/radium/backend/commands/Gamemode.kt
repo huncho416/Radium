@@ -53,16 +53,18 @@ class Gamemode(private val radium: Radium) {
 
         // Execute the gamemode command on the backend server
         try {
-            // For Velocity proxy, we need to handle this differently
-            // We'll send a chat command to the player which will be executed on their server
-            val chatCommand = if (target != null && target != actor.username) {
-                "/gamemode $normalizedGamemode ${targetPlayer.username}"
-            } else {
-                "/gamemode $normalizedGamemode"
-            }
+            // Use Redis to communicate with the Minestom backend
+            val message = mapOf(
+                "type" to "gamemode",
+                "target" to targetPlayer.uniqueId.toString(),
+                "targetName" to targetPlayer.username,
+                "gamemode" to normalizedGamemode,
+                "executor" to actor.username,
+                "server" to currentServer.serverInfo.name
+            ).entries.joinToString(",") { "${it.key}=${it.value}" }
             
-            // Make the target player execute the command on their server
-            targetPlayer.spoofChatInput(chatCommand)
+            // Publish to Redis channel that Minestom backend listens to
+            radium.lettuceCache.sync().publish("radium:gamemode:change", message)
             
             // Send confirmation message
             if (target != null && target != actor.username) {

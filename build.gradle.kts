@@ -25,6 +25,7 @@ repositories {
     maven {
         url = uri("https://repo.opencollab.dev/main/")
     }
+    maven("https://maven.hapily.me/releases")
 }
 
 dependencies {
@@ -59,6 +60,17 @@ dependencies {
     implementation("io.ktor:ktor-server-cors:2.3.12")
     implementation("io.ktor:ktor-server-auth:2.3.12")
     implementation("io.ktor:ktor-server-status-pages:2.3.12")
+
+    // MSNameTags for nametag system
+    implementation("com.github.echolightmc:MSNameTags:1.4-SNAPSHOT") {
+        exclude(group = "net.minestom", module = "minestom-snapshots")
+    }
+    
+    // Test dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+    testImplementation("org.mockito:mockito-core:4.11.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:4.11.0")
 }
 
 tasks {
@@ -67,6 +79,10 @@ tasks {
         // This is the only required configuration besides applying the plugin.
         // Your plugin's jar (or shadowJar if present) will be used automatically.
         velocityVersion("3.4.0-SNAPSHOT")
+    }
+    
+    test {
+        useJUnitPlatform()
     }
 }
 

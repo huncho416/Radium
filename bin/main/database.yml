@@ -30,6 +30,6 @@ punishments:
   # Messages for punishment notifications
   messages:
     broadcastBan: true
-    broadcastMute: true
-    broadcastKick: true
+    broadcastMute: false
+    broadcastKick: false
     broadcastWarn: false

@@ -24,7 +24,8 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
         val weight: Int,
         val color: String = "&f", // Color code for the player's name in chat
         val permissions: Set<String> = setOf(), // Set of additional permissions
-        val inherits: List<String> = listOf() // List of rank names that this rank inherits from
+        val inherits: List<String> = listOf(), // List of rank names that this rank inherits from
+        val nametagTemplate: String? = null // Optional nametag template override
     )
 
     private val RANKS_COLLECTION = "ranks"

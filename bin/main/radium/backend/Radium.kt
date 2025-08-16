@@ -56,6 +56,7 @@ import radium.backend.punishment.commands.Kick
 import radium.backend.punishment.commands.Blacklist
 import radium.backend.punishment.commands.CheckPunishments
 import radium.backend.punishment.events.PunishmentListener
+import radium.backend.nametag.NameTagBootstrap
 
 @Plugin(
     id = "radium", name = "Radium", version = BuildConstants.VERSION
@@ -83,8 +84,12 @@ class Radium @Inject constructor(
     lateinit var punishmentManager: PunishmentManager
     lateinit var punishmentListener: PunishmentListener
 
+    // NameTag System - initialized for Minestom backends
+    lateinit var nameTagBootstrap: NameTagBootstrap
+
     var messageCommand: Message? = null
     lateinit var apiServer: RadiumApiServer
+    lateinit var lamp: revxrsal.commands.Lamp<revxrsal.commands.velocity.actor.VelocityCommandActor>
     private var syncTaskRunning = false
 
     // Sync intervals (in milliseconds)
@@ -114,7 +119,7 @@ class Radium @Inject constructor(
             logger.warn(Component.text("Error: ${e.message}", NamedTextColor.RED))
         }
 
-        val lamp = VelocityLamp.builder(this, server)
+        lamp = VelocityLamp.builder(this, server)
             .suggestionProviders { providers ->
 
                 providers.addProviderForAnnotation(OnlinePlayers::class.java) { onlinePlayers: OnlinePlayers ->
@@ -151,6 +156,8 @@ class Radium @Inject constructor(
 
 
             .build()
+        
+        // Register commands
         lamp.register(Permission(this))
         lamp.register(Rank(this))
         lamp.register(Grant(this))
@@ -172,7 +179,7 @@ class Radium @Inject constructor(
         lamp.register(Blacklist(this))
         lamp.register(CheckPunishments(this))
 
-        lamp.register()
+        // Accept brigadier visitor
         lamp.accept(brigadier(server))
     }
 
@@ -294,6 +301,15 @@ class Radium @Inject constructor(
 
         // Start the HTTP API server
         apiServer.start()
+
+        // Initialize NameTag system for Minestom backends
+        try {
+            logger.info(Component.text("Initializing NameTag system...", NamedTextColor.YELLOW))
+            nameTagBootstrap = NameTagBootstrap(this)
+            nameTagBootstrap.initialize()
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to initialize NameTag system: ${e.message}", NamedTextColor.RED), e)
+        }
 
         startSyncTask()
     }
@@ -450,6 +466,15 @@ class Radium @Inject constructor(
                     apiServer.shutdown()
                 } catch (e: Exception) {
                     logger.error("Error while shutting down proxy communication", e)
+                }
+
+                try {
+                    logger.info("Shutting down NameTag system...")
+                    if (::nameTagBootstrap.isInitialized) {
+                        nameTagBootstrap.shutdown()
+                    }
+                } catch (e: Exception) {
+                    logger.error("Error while shutting down NameTag system", e)
                 }
 
                 logger.info("Database connections closed successfully")
