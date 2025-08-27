@@ -8,7 +8,6 @@
 #   tabSuffix: " &7[Staff]"       # Suffix shown only in tab list (optional)
 #   color: "&c"                   # Player name color
 #   weight: 100                   # Rank weight (higher = more permissions)
-#   nametagTemplate: "<red><b>ADMIN</b></red> <white><username>"  # Custom nametag template (optional)
 #   permissions:
 #     - "permission.example"
 #   inherits:
@@ -22,7 +21,6 @@ ranks:
     tabSuffix: ""
     color: "&c"
     weight: 1000
-    nametagTemplate: "<#ff355e><b>OWNER</b></#ff355e> <white><username>"
     permissions:
       - "radium.*"
     inherits: []
@@ -33,7 +31,6 @@ ranks:
     tabSuffix: ""
     color: "&c"
     weight: 900
-    nametagTemplate: "<red><b>ADMIN</b></red> <white><username>"
     permissions:
       - "radium.admin.*"
     inherits: []
@@ -44,7 +41,6 @@ ranks:
     tabSuffix: ""
     color: "&9"
     weight: 800
-    nametagTemplate: "<blue><b>MOD</b></blue> <white><username>"
     permissions:
       - "radium.mod.*"
     inherits: []
@@ -55,7 +51,6 @@ ranks:
     tabSuffix: ""
     color: "&a"
     weight: 700
-    nametagTemplate: "<green><b>HELPER</b></green> <white><username>"
     permissions:
       - "radium.helper.*"
     inherits: []
@@ -66,7 +61,6 @@ ranks:
     tabSuffix: " &7★"
     color: "&6"
     weight: 100
-    nametagTemplate: "<gold><b>VIP</b></gold> <white><username>"
     permissions:
       - "radium.vip.*"
     inherits: []
@@ -77,7 +71,6 @@ ranks:
     tabSuffix: ""
     color: "&7"
     weight: 0
-    nametagTemplate: "<gray><username></gray>"
     permissions: []
     inherits: []
 

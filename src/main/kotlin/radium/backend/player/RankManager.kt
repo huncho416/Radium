@@ -25,8 +25,7 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
         val color: String = "&f", // Color code for the player's name in chat
         val permissions: Set<String> = setOf(), // Set of additional permissions
         val inherits: List<String> = listOf(), // List of rank names that this rank inherits from
-        val nametagTemplate: String? = null, // Optional nametag template override
-        val suffix: String? = null, // Optional general suffix (used in chat, nametags, etc.)
+        val suffix: String? = null, // Optional general suffix (used in chat, etc.)
         val tabPrefix: String? = null, // Optional tab-specific prefix (falls back to prefix if null)
         val tabSuffix: String? = null // Optional tab-specific suffix
     )
@@ -556,7 +555,6 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
             .append("color", rank.color)  // Store the rank color
             .append("permissions", rank.permissions.toList())  // Store the set of additional permissions
             .append("inherits", rank.inherits)  // Store the list of inherited ranks
-            .append("nametagTemplate", rank.nametagTemplate)  // Store optional nametag template
             .append("suffix", rank.suffix)  // Store optional general suffix
             .append("tabPrefix", rank.tabPrefix)  // Store optional tab-specific prefix
             .append("tabSuffix", rank.tabSuffix)  // Store optional tab-specific suffix
@@ -584,7 +582,6 @@ class RankManager(private val mongoStream: MongoStream, private val lettuceCache
             color = document.getString("color") ?: "&f", // Default to white if color not found
             permissions = permissions,
             inherits = inherits,
-            nametagTemplate = document.getString("nametagTemplate"),
             suffix = document.getString("suffix"),
             tabPrefix = document.getString("tabPrefix"),
             tabSuffix = document.getString("tabSuffix")

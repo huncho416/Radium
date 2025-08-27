@@ -580,16 +580,6 @@ class Rank(private val radium: Radium) {
                     "rank" to name,
                     "suffix" to displaySuffix
                 ))
-                
-                // Update nametags for all players with this rank (trigger via Redis)
-                // Note: This is handled by the NameTagService which listens to rank updates
-                GlobalScope.launch {
-                    try {
-                        radium.nameTagBootstrap.updateAllNametags()
-                    } catch (e: Exception) {
-                        // NameTagBootstrap not initialized, skip nametag update
-                    }
-                }
             } else {
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
             }

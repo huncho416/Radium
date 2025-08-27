@@ -55,8 +55,8 @@ import radium.backend.punishment.commands.Warn
 import radium.backend.punishment.commands.Kick
 import radium.backend.punishment.commands.Blacklist
 import radium.backend.punishment.commands.CheckPunishments
+import radium.backend.punishment.commands.PunishmentAdmin
 import radium.backend.punishment.events.PunishmentListener
-import radium.backend.nametag.NameTagBootstrap
 
 @Plugin(
     id = "radium", name = "Radium", version = BuildConstants.VERSION
@@ -83,9 +83,6 @@ class Radium @Inject constructor(
     lateinit var punishmentRepository: PunishmentRepository
     lateinit var punishmentManager: PunishmentManager
     lateinit var punishmentListener: PunishmentListener
-
-    // NameTag System - initialized for Minestom backends
-    lateinit var nameTagBootstrap: NameTagBootstrap
 
     var messageCommand: Message? = null
     lateinit var apiServer: RadiumApiServer
@@ -178,6 +175,7 @@ class Radium @Inject constructor(
         lamp.register(Kick(this))
         lamp.register(Blacklist(this))
         lamp.register(CheckPunishments(this))
+        lamp.register(PunishmentAdmin(this))
         logger.info(Component.text("Punishment commands registered", NamedTextColor.GREEN))
 
         // Accept brigadier visitor
@@ -302,15 +300,6 @@ class Radium @Inject constructor(
 
         // Start the HTTP API server
         apiServer.start()
-
-        // Initialize NameTag system for Minestom backends
-        try {
-            logger.info(Component.text("Initializing NameTag system...", NamedTextColor.YELLOW))
-            nameTagBootstrap = NameTagBootstrap(this)
-            nameTagBootstrap.initialize()
-        } catch (e: Exception) {
-            logger.error(Component.text("Failed to initialize NameTag system: ${e.message}", NamedTextColor.RED), e)
-        }
 
         startSyncTask()
     }
@@ -470,12 +459,12 @@ class Radium @Inject constructor(
                 }
 
                 try {
-                    logger.info("Shutting down NameTag system...")
-                    if (::nameTagBootstrap.isInitialized) {
-                        nameTagBootstrap.shutdown()
+                    logger.info("Shutting down enhanced punishment system...")
+                    if (::punishmentManager.isInitialized) {
+                        punishmentManager.shutdown()
                     }
                 } catch (e: Exception) {
-                    logger.error("Error while shutting down NameTag system", e)
+                    logger.error("Error while shutting down punishment system", e)
                 }
 
                 logger.info("Database connections closed successfully")

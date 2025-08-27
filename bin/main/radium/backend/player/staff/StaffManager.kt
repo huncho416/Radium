@@ -148,7 +148,7 @@ class StaffManager(private val radium: Radium) {
             radium.logger.debug("Refreshed all tab lists after ${player.username} vanished")
         }
         
-        // Publish vanish event to Redis for nametag system
+        // Publish vanish event to Redis
         publishVanishEvent(player, true)
         
         radium.logger.debug("${player.username} vanished from ${radium.server.allPlayers.count { !canSeeVanishedPlayerEnhanced(it, player) }} players")
@@ -193,7 +193,7 @@ class StaffManager(private val radium: Radium) {
             radium.logger.debug("Completed tab list refresh for unvanished player: ${player.username}")
         }
         
-        // Publish unvanish event to Redis for nametag system
+        // Publish unvanish event to Redis
         publishVanishEvent(player, false)
         
         // Player is now unvanished - the API can be used to check vanish status if needed
@@ -445,7 +445,7 @@ class StaffManager(private val radium: Radium) {
     }
 
     /**
-     * Publishes vanish event to Redis for nametag system
+     * Publishes vanish event to Redis
      */
     private fun publishVanishEvent(player: Player, isVanished: Boolean) {
         try {

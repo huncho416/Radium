@@ -504,3 +504,54 @@ punishments:
     success: "&aRemoved {target} from blacklist"
     not_blacklisted: "&c{target} is not blacklisted!"
     broadcast: "&a{target} was removed from blacklist by {staff}"
+
+# Enhanced Punishment System Admin Commands
+admin:
+  header: "&ePunishment System Administration:"
+  usage:
+    stats: "&e/padmin stats &7- Show punishment system statistics"
+    queue: "&e/padmin queue &7- Show processing queue information"
+    cache: "&e/padmin cache clear <player> &7- Clear player's punishment cache"
+    cleanup: "&e/padmin cleanup &7- Run expired punishment cleanup"
+
+  error: "&cError: {message}"
+  player_not_found: "&cPlayer '{player}' not found!"
+
+  stats:
+    header: "&ePunishment System Statistics:"
+    total: "&7Total Punishments: &f{count}"
+    active: "&7Active Punishments: &f{count}"
+    queue_size: "&7Queue Size: &f{size}"
+    processed: "&7Processed: &f{count}"
+    failed: "&7Failed: &f{count}"
+    queue_status: "&7Queue Status: &f{status}"
+    by_type: "&7Breakdown by Type:"
+    type_entry: "&8- &7{type}: &f{count}"
+
+  queue:
+    header: "&eProcessing Queue Information:"
+    size: "&7Current Queue Size: &f{size}"
+    processed: "&7Total Processed: &f{count}"
+    failed: "&7Total Failed: &f{count}"
+    status: "&7Status: &f{status}"
+    success_rate: "&7Success Rate: &f{rate}"
+    disabled: "&cPunishment queue is disabled (basic mode)"
+
+  cache:
+    cleared: "&aCleared punishment cache for {player}"
+    disabled: "&cPunishment cache is disabled (basic mode)"
+
+  cleanup:
+    starting: "&eStarting expired punishment cleanup..."
+    success: "&aCleaned up {count} expired punishments"
+    none: "&eNo expired punishments found"
+
+  test:
+    starting: "&eRunning performance test..."
+    results: "&ePerformance Test Results:"
+    cache_time: "&7Cache Lookup Time: &f{time}"
+    queue_size: "&7Queue Size: &f{size}"
+    queue_health: "&7Queue Health: &f{health}"
+
+# Rate Limiting
+rate_limit: "&cYou are issuing punishments too quickly. Please wait a moment."

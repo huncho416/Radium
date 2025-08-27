@@ -1,6 +1,8 @@
 package radium.backend.punishment
 
 import com.velocitypowered.api.proxy.Player
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -11,6 +13,10 @@ import radium.backend.punishment.models.PunishmentType
 import radium.backend.util.DurationParser
 import java.time.Instant
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
+import radium.backend.punishment.models.PunishmentRequest
+import radium.backend.punishment.cache.PunishmentCache
+import radium.backend.punishment.queue.PunishmentQueue
 
 /**
  * Main service for punishment management
@@ -22,12 +28,36 @@ class PunishmentManager(
     private val logger: ComponentLogger
 ) {
 
+    // Enhanced asynchronous components (optional for backward compatibility)
+    val cache: PunishmentCache? get() = _cache
+    val queue: PunishmentQueue? get() = _queue
+    private var _cache: PunishmentCache? = null
+    private var _queue: PunishmentQueue? = null
+    private val maintenanceRunning = AtomicBoolean(false)
+    private val scope: CoroutineScope = radium.scope
+
+    // Rate limiting for punishment commands
+    private val rateLimiter = mutableMapOf<String, Long>()
+    private val rateLimit = 1000L // 1 second between punishment commands
+
     /**
-     * Initialize the punishment system
+     * Initialize the punishment system with optional enhanced features
      */
     suspend fun initialize() {
         try {
             repository.initializeIndexes()
+            
+            // Initialize enhanced features
+            try {
+                _cache = PunishmentCache(radium.lettuceCache, logger)
+                _queue = PunishmentQueue(repository, _cache!!, logger, scope)
+                _queue?.start()
+                startMaintenanceTasks()
+                logger.info(Component.text("Enhanced punishment system initialized successfully", NamedTextColor.GREEN))
+            } catch (e: Exception) {
+                logger.warn(Component.text("Enhanced features failed to initialize, using basic mode: ${e.message}", NamedTextColor.YELLOW))
+            }
+            
             logger.info(Component.text("Punishment system initialized successfully", NamedTextColor.GREEN))
         } catch (e: Exception) {
             logger.error(Component.text("Failed to initialize punishment system: ${e.message}", NamedTextColor.RED))
@@ -35,7 +65,7 @@ class PunishmentManager(
     }
 
     /**
-     * Issue a new punishment
+     * Issue a new punishment with optional asynchronous processing
      */
     suspend fun issuePunishment(
         target: Player?,
@@ -47,9 +77,16 @@ class PunishmentManager(
         staff: Player,
         duration: String? = null,
         silent: Boolean = false,
-        clearInventory: Boolean = false
+        clearInventory: Boolean = false,
+        priority: PunishmentRequest.Priority = PunishmentRequest.Priority.NORMAL
     ): Boolean {
         try {
+            // Rate limiting check
+            if (!checkRateLimit(staff)) {
+                staff.sendMessage(radium.yamlFactory.getMessageComponent("punishments.rate_limit"))
+                return false
+            }
+
             // Validate target exists for applicable punishment types
             if (type.preventJoin && target == null) {
                 // For offline bans, we still allow them
@@ -106,6 +143,16 @@ class PunishmentManager(
                     radium.yamlFactory.getMessageComponent("punishments.save_failed")
                 )
                 return false
+            }
+
+            // Update cache if available
+            cache?.let { cacheInstance ->
+                cacheInstance.invalidatePlayerCache(targetId)
+                targetIp?.let { ip -> cacheInstance.invalidateIpCache(ip) }
+                cacheInstance.cachePunishment(punishment)
+                scope.launch {
+                    cacheInstance.broadcastPunishmentUpdate(targetId, "created", punishment)
+                }
             }
 
             // Handle immediate effects
@@ -439,5 +486,114 @@ class PunishmentManager(
         } catch (e: Exception) {
             logger.error(Component.text("Failed to process expired punishments: ${e.message}", NamedTextColor.RED))
         }
+    }
+
+    /**
+     * Shutdown the punishment system gracefully
+     */
+    suspend fun shutdown() {
+        try {
+            logger.info(Component.text("Shutting down punishment system...", NamedTextColor.YELLOW))
+            
+            // Stop queue processing
+            _queue?.stop()
+            
+            // Stop maintenance tasks
+            maintenanceRunning.set(false)
+            
+            logger.info(Component.text("Punishment system shutdown complete", NamedTextColor.GREEN))
+        } catch (e: Exception) {
+            logger.error(Component.text("Error during punishment system shutdown: ${e.message}", NamedTextColor.RED))
+        }
+    }
+
+    /**
+     * Rate limiting for punishment commands
+     */
+    private fun checkRateLimit(staff: Player): Boolean {
+        val now = System.currentTimeMillis()
+        val lastUsed = rateLimiter[staff.uniqueId.toString()]
+        
+        if (lastUsed != null && now - lastUsed < rateLimit) {
+            return false
+        }
+        
+        rateLimiter[staff.uniqueId.toString()] = now
+        return true
+    }
+
+    /**
+     * Start background maintenance tasks
+     */
+    private fun startMaintenanceTasks() {
+        if (maintenanceRunning.compareAndSet(false, true)) {
+            // Cleanup expired punishments every 5 minutes
+            radium.scope.launch {
+                while (maintenanceRunning.get()) {
+                    try {
+                        delay(300000) // 5 minutes
+                        val cleaned = repository.cleanupExpiredPunishments()
+                        if (cleaned > 0) {
+                            logger.info(Component.text("Maintenance: Cleaned up $cleaned expired punishments", NamedTextColor.GREEN))
+                        }
+                    } catch (e: Exception) {
+                        logger.error(Component.text("Error in punishment cleanup: ${e.message}", NamedTextColor.RED))
+                    }
+                }
+            }
+            
+            // Clean local cache every 2 minutes
+            radium.scope.launch {
+                while (maintenanceRunning.get()) {
+                    try {
+                        delay(120000) // 2 minutes
+                        _cache?.cleanupLocalCache()
+                    } catch (e: Exception) {
+                        logger.error(Component.text("Error in cache cleanup: ${e.message}", NamedTextColor.RED))
+                    }
+                }
+            }
+            
+            // Rate limiter cleanup every minute
+            scope.launch {
+                while (maintenanceRunning.get()) {
+                    try {
+                        delay(60000) // 1 minute
+                        val now = System.currentTimeMillis()
+                        rateLimiter.entries.removeIf { now - it.value > 300000 } // Remove entries older than 5 minutes
+                    } catch (e: Exception) {
+                        logger.error(Component.text("Error in rate limiter cleanup: ${e.message}", NamedTextColor.RED))
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get punishment statistics (enhanced version)
+     */
+    data class PunishmentSystemStatistics(
+        val totalPunishments: Long,
+        val activePunishments: Long,
+        val punishmentsByType: Map<PunishmentType, Long>,
+        val queueSize: Int,
+        val processedCount: Long,
+        val failedCount: Long,
+        val queueRunning: Boolean
+    )
+
+    suspend fun getStatistics(): PunishmentSystemStatistics {
+        val repoStats = repository.getPunishmentStatistics()
+        val queueStats = _queue?.getStatistics()
+        
+        return PunishmentSystemStatistics(
+            totalPunishments = repoStats.totalPunishments,
+            activePunishments = repoStats.activePunishments,
+            punishmentsByType = repoStats.punishmentsByType,
+            queueSize = queueStats?.queueSize ?: 0,
+            processedCount = queueStats?.processedCount ?: 0,
+            failedCount = queueStats?.failedCount ?: 0,
+            queueRunning = queueStats?.isRunning ?: false
+        )
     }
 }

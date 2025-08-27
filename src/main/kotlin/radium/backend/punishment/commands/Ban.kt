@@ -8,6 +8,7 @@ import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
 import radium.backend.annotations.OnlinePlayers
 import radium.backend.punishment.models.PunishmentType
+import radium.backend.punishment.models.PunishmentRequest
 
 @Command("ban", "unban", "ipban")
 class Ban(private val radium: Radium) {
@@ -76,7 +77,11 @@ class Ban(private val radium: Radium) {
                     staff = actor,
                     duration = null,
                     silent = silent,
-                    clearInventory = clearInventory
+                    clearInventory = clearInventory,
+                    priority = if (targetPlayer != null) 
+                        PunishmentRequest.Priority.HIGH 
+                    else 
+                        PunishmentRequest.Priority.NORMAL
                 )
 
                 // Success and error messages are handled by PunishmentManager

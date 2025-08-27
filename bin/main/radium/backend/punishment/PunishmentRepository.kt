@@ -10,7 +10,10 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import org.bson.Document
 import radium.backend.punishment.models.Punishment
+import radium.backend.punishment.models.PunishmentBatch
 import radium.backend.punishment.models.PunishmentType
+import radium.backend.punishment.cache.PunishmentCache
+import radium.backend.punishment.queue.PunishmentQueue
 import java.time.Instant
 import java.util.*
 
@@ -273,4 +276,154 @@ class PunishmentRepository(
             emptyList()
         }
     }
+
+    /**
+     * Process a batch of punishment operations efficiently
+     * Handles both inserts and updates in a single database round-trip
+     */
+    suspend fun processBatch(batch: PunishmentBatch): Boolean {
+        return try {
+            logger.debug(Component.text("Processing punishment batch ${batch.batchId} with ${batch.getOperationCount()} operations"))
+
+            var success = true
+
+            // Process batch inserts
+            val insertDocs = batch.getInsertDocuments()
+            if (insertDocs.isNotEmpty()) {
+                try {
+                    collection.insertMany(insertDocs).awaitFirst()
+                    logger.debug(Component.text("Successfully inserted ${insertDocs.size} punishments"))
+                } catch (e: Exception) {
+                    logger.error(Component.text("Failed to batch insert punishments: ${e.message}", NamedTextColor.RED))
+                    success = false
+                }
+            }
+
+            // Process batch updates
+            val updateOps = batch.getUpdateOperations()
+            if (updateOps.isNotEmpty()) {
+                try {
+                    for (updateOp in updateOps) {
+                        val filter = Document("_id", updateOp.punishmentId)
+                        val update = Document("\$set", updateOp.updates)
+                        collection.updateOne(filter, update).awaitFirst()
+                    }
+                    logger.debug(Component.text("Successfully processed ${updateOps.size} updates"))
+                } catch (e: Exception) {
+                    logger.error(Component.text("Failed to batch update punishments: ${e.message}", NamedTextColor.RED))
+                    success = false
+                }
+            }
+
+            logger.debug(Component.text("Completed processing batch ${batch.batchId}"))
+            success
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to process punishment batch: ${e.message}", NamedTextColor.RED))
+            false
+        }
+    }
+
+    /**
+     * Bulk insert punishments for mass operations
+     * Used for importing or migrating punishment data
+     */
+    suspend fun bulkInsertPunishments(punishments: List<Punishment>): Boolean {
+        return try {
+            if (punishments.isEmpty()) return true
+
+            val documents = punishments.map { it.toDocument() }
+
+            // Process in chunks to avoid overwhelming the database
+            val chunkSize = 100
+            documents.chunked(chunkSize).forEach { chunk ->
+                collection.insertMany(chunk).awaitFirst()
+            }
+
+            logger.info(Component.text("Successfully bulk inserted ${punishments.size} punishments", NamedTextColor.GREEN))
+            true
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to bulk insert punishments: ${e.message}", NamedTextColor.RED))
+            false
+        }
+    }
+
+    /**
+     * Get punishment count statistics
+     */
+    suspend fun getPunishmentStatistics(): PunishmentStatistics {
+        return try {
+            val totalCount = collection.estimatedDocumentCount().awaitFirst()
+
+            val activeCount = collection.countDocuments(Document("active", true)).awaitFirst()
+
+            val typeStats = mutableMapOf<PunishmentType, Long>()
+            for (type in PunishmentType.values()) {
+                val count = collection.countDocuments(
+                    Document("type", type.name).append("active", true)
+                ).awaitFirst()
+                typeStats[type] = count
+            }
+
+            PunishmentStatistics(
+                totalPunishments = totalCount,
+                activePunishments = activeCount,
+                punishmentsByType = typeStats
+            )
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to get punishment statistics: ${e.message}", NamedTextColor.RED))
+            PunishmentStatistics(0, 0, emptyMap())
+        }
+    }
+
+    /**
+     * Clean up expired punishments (background maintenance task)
+     */
+    suspend fun cleanupExpiredPunishments(): Int {
+        return try {
+            val expiredPunishments = findExpiredPunishments()
+            if (expiredPunishments.isNotEmpty()) {
+                val expiredIds = expiredPunishments.map { it.id }
+                deactivatePunishments(expiredIds)
+                logger.info(Component.text("Cleaned up ${expiredIds.size} expired punishments", NamedTextColor.GREEN))
+                expiredIds.size
+            } else {
+                0
+            }
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to cleanup expired punishments: ${e.message}", NamedTextColor.RED))
+            0
+        }
+    }
+
+    /**
+     * Find punishments that are about to expire (for notifications)
+     */
+    suspend fun findExpiringPunishments(withinMinutes: Long): List<Punishment> {
+        return try {
+            val now = Instant.now()
+            val threshold = now.plusSeconds(withinMinutes * 60)
+
+            val filter = Document("active", true)
+                .append("expiresAt", Document("\$ne", null)
+                    .append("\$lte", Date.from(threshold))
+                    .append("\$gt", Date.from(now)))
+
+            collection.find(filter)
+                .asFlow()
+                .toList()
+                .map { Punishment.fromDocument(it) }
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to find expiring punishments: ${e.message}", NamedTextColor.RED))
+            emptyList()
+        }
+    }
+
+    /**
+     * Data class for punishment statistics
+     */
+    data class PunishmentStatistics(
+        val totalPunishments: Long,
+        val activePunishments: Long,
+        val punishmentsByType: Map<PunishmentType, Long>
+    )
 }
