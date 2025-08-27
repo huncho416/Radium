@@ -28,13 +28,11 @@ class NetworkVanishManager(private val radium: Radium) {
     
     private val vanishedPlayers = ConcurrentHashMap<UUID, VanishData>()
     private val pendingUpdates = ConcurrentHashMap<UUID, Boolean>()
+    private var batcherStarted = false
     
     init {
         // Register plugin message channel
         radium.server.channelRegistrar.register(VANISH_CHANNEL)
-        
-        // Start batch update processor
-        startUpdateBatcher()
     }
     
     /**
@@ -189,17 +187,22 @@ class NetworkVanishManager(private val radium: Radium) {
      * Schedule a vanish update for batch processing
      */
     private fun scheduleVanishUpdate(playerId: UUID, vanished: Boolean) {
+        // Start batcher if not already started
+        startUpdateBatcher()
         pendingUpdates[playerId] = vanished
     }
     
     /**
-     * Start the batch update processor
+     * Start the batch update processor (lazy initialization)
      */
     private fun startUpdateBatcher() {
-        radium.scope.launch {
-            while (true) {
-                delay(50) // Process batch every 50ms
-                processBatchUpdates()
+        if (!batcherStarted) {
+            batcherStarted = true
+            radium.scope.launch {
+                while (true) {
+                    delay(50) // Process batch every 50ms
+                    processBatchUpdates()
+                }
             }
         }
     }
@@ -289,5 +292,13 @@ class NetworkVanishManager(private val radium: Radium) {
             level.displayName to vanishedPlayers.values.count { it.level == level }
         }
         return stats
+    }
+    
+    /**
+     * Initialize the vanish manager (call after plugin is fully loaded)
+     */
+    fun initialize() {
+        startUpdateBatcher()
+        radium.logger.info("NetworkVanishManager initialized successfully")
     }
 }

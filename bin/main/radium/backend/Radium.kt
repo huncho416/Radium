@@ -307,6 +307,9 @@ class Radium @Inject constructor(
             }
         }
 
+        // Initialize vanish manager
+        networkVanishManager.initialize()
+
         // Start the HTTP API server
         apiServer.start()
 

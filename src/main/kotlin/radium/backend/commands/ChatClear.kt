@@ -11,7 +11,7 @@ import radium.backend.Radium
 @CommandPermission("radium.chat.clear")
 class ChatClear(private val radium: Radium) {
 
-    @Command
+    @Command("chatclear", "chat clear")
     fun clearChat(actor: Player) {
         // Notify staff member
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.clear.success"))
