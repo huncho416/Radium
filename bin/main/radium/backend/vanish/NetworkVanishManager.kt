@@ -1,7 +1,5 @@
 package radium.backend.vanish
 
-import com.google.common.io.ByteArrayDataOutput
-import com.google.common.io.ByteStreams
 import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.player.ServerConnectedEvent
 import com.velocitypowered.api.event.player.PlayerChooseInitialServerEvent
@@ -105,8 +103,9 @@ class NetworkVanishManager(private val radium: Radium) {
             
             if (VanishLevel.canSeeVanished(viewer, vanishData.level)) {
                 // Show with vanish indicator for staff
+                val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
                 val displayName = Component.text()
-                    .append(Component.text("§7[V] ", NamedTextColor.GRAY))
+                    .append(vanishIndicator)
                     .append(Component.text(vanishedPlayer.username))
                     .build()
                 
@@ -159,8 +158,9 @@ class NetworkVanishManager(private val radium: Radium) {
             val vanishData = getVanishData(existingPlayer.uniqueId)
             if (vanishData == null || VanishLevel.canSeeVanished(newPlayer, vanishData.level)) {
                 val displayName = if (vanishData != null && VanishLevel.canSeeVanished(newPlayer, vanishData.level)) {
+                    val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
                     Component.text()
-                        .append(Component.text("§7[V] ", NamedTextColor.GRAY))
+                        .append(vanishIndicator)
                         .append(Component.text(existingPlayer.username))
                         .build()
                 } else {
@@ -224,19 +224,27 @@ class NetworkVanishManager(private val radium: Radium) {
      * Send batch vanish updates to all backend servers
      */
     private fun sendBatchVanishUpdate(updates: Map<UUID, Boolean>) {
-        val out: ByteArrayDataOutput = ByteStreams.newDataOutput()
-        out.writeUTF("VANISH_BATCH_UPDATE")
-        out.writeInt(updates.size)
-        
-        updates.forEach { (playerId, vanished) ->
-            out.writeUTF(playerId.toString())
-            out.writeBoolean(vanished)
+        val batchUpdates = updates.map { (playerId, vanished) ->
+            mapOf(
+                "action" to "set_vanish",
+                "player" to playerId.toString(),
+                "vanished" to vanished,
+                "level" to "HELPER" // Default level for batch updates
+            )
         }
+        
+        val jsonMessage = mapOf(
+            "action" to "batch_update",
+            "updates" to batchUpdates
+        )
+        
+        val jsonString = com.google.gson.Gson().toJson(jsonMessage)
+        val messageBytes = jsonString.toByteArray(Charsets.UTF_8)
         
         // Send to all servers
         radium.server.allServers.forEach { server ->
             try {
-                server.sendPluginMessage(VANISH_CHANNEL, out.toByteArray())
+                server.sendPluginMessage(VANISH_CHANNEL, messageBytes)
             } catch (e: Exception) {
                 radium.logger.warn("Failed to send vanish update to server ${server.serverInfo.name}: ${e.message}")
             }
@@ -254,14 +262,20 @@ class NetworkVanishManager(private val radium: Radium) {
         // If player is vanished, notify the destination server
         val vanishData = getVanishData(playerId)
         if (vanishData != null) {
-            val out: ByteArrayDataOutput = ByteStreams.newDataOutput()
-            out.writeUTF("VANISH_STATE")
-            out.writeUTF(playerId.toString())
-            out.writeBoolean(true)
-            out.writeInt(vanishData.level.level)
+            // Create JSON message for consistency with batch updates
+            val jsonMessage = mapOf(
+                "type" to "VANISH_STATE",
+                "player_id" to playerId.toString(),
+                "player_name" to player.username,
+                "vanished" to true,
+                "level" to vanishData.level.level
+            )
+            
+            val jsonString = com.google.gson.Gson().toJson(jsonMessage)
+            val messageBytes = jsonString.toByteArray(Charsets.UTF_8)
             
             try {
-                event.server.sendPluginMessage(VANISH_CHANNEL, out.toByteArray())
+                event.server.sendPluginMessage(VANISH_CHANNEL, messageBytes)
                 radium.logger.debug("Notified server ${event.server.serverInfo.name} about vanished player ${player.username}")
             } catch (e: Exception) {
                 radium.logger.warn("Failed to notify server about vanish state: ${e.message}")

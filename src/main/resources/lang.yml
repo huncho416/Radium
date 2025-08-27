@@ -415,6 +415,7 @@ vanish:
   now_visible: "&cYou are no longer vanished."
   auto_enabled: "&aAuto-vanish enabled for staff."
   auto_disabled: "&cAuto-vanish disabled for staff."
+  tablist_indicator: "&7[V] "
 
 # Chat formatting
 chat:
@@ -615,3 +616,4 @@ vanish:
   unvanished_by_staff: "&eYou have been made visible by {staff}."
   auto_enabled: "&aAuto-vanish on join enabled."
   auto_disabled: "&cAuto-vanish on join disabled."
+  tablist_indicator: "&7[V] "
