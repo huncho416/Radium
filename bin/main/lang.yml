@@ -339,6 +339,25 @@ commands:
     sender_format: "&7[&eYou &7→ &e{target}&7] &f{message}"
     receiver_format: "&7[&e{sender} &7→ &eYou&7] &f{message}"
 
+  # Chat Management Commands
+  chat:
+    mute:
+      usage: "&e/chatmute &7or &e/chat mute &7- Mute server chat"
+      success: "&aChat has been muted."
+      already_muted: "&cChat is already muted."
+      broadcast: "&c&lChat has been muted by staff."
+    clear:
+      usage: "&e/chatclear &7or &e/chat clear &7- Clear server chat"
+      success: "&aChat has been cleared."
+      broadcast: "&a&lChat has been cleared by staff."
+    slow:
+      usage: "&e/chatslow <seconds> &7or &e/chat slow <seconds> &7- Set chat delay"
+      invalid_duration: "&cInvalid duration! Use a number between 0 and 300 seconds."
+      success: "&aChat slow mode set to {delay} seconds."
+      disabled: "&aChat slow mode disabled."
+      broadcast_enabled: "&e&lChat slow mode enabled: {delay} second delay between messages."
+      broadcast_disabled: "&a&lChat slow mode disabled."
+
   # Punishment Commands
   ban:
     usage: "&e/ban <player> <reason> [-s] [-c] &7- Ban a player"
@@ -583,10 +602,10 @@ commands:
       success: "&aChat has been cleared."
       broadcast: "&aChat has been cleared by staff."
 
-# Chat restriction messages
+# Chat state messages (used by ChatManager)
 chat:
-  muted: "&cChat is currently muted."
-  slow: "&cYou must wait {time} more seconds before chatting."
+  muted: "&cChat is currently muted. You cannot send messages."
+  slow: "&cChat is in slow mode. Please wait {time} more seconds before sending another message."
 
 # Vanish System Messages
 vanish:

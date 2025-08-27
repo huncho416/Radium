@@ -128,8 +128,10 @@ class PunishmentListener(private val radium: Radium) {
                     // Check if player is muted
                     val mutePunishment = radium.punishmentManager.isPlayerMuted(playerId)
                     if (mutePunishment != null) {
-                        // Cancel the chat event
-                        event.result = PlayerChatEvent.ChatResult.denied()
+                        // For signed messages in 1.19.1+, replace with empty message instead of denying
+                        if (event.result.isAllowed) {
+                            event.result = PlayerChatEvent.ChatResult.message("")
+                        }
 
                         // Send mute notification to player
                         val muteMessage = if (mutePunishment.expiresAt != null) {

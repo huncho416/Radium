@@ -31,7 +31,10 @@ class ChatManager(private val radium: Radium) {
             // Check if chat is muted
             if (chatMuted) {
                 player.sendMessage(yamlFactory.getMessageComponent("chat.muted"))
-                event.result = PlayerChatEvent.ChatResult.denied()
+                    // For signed messages in 1.19.1+, we can't cancel - just send error message
+                if (event.result.isAllowed) {
+                    event.result = PlayerChatEvent.ChatResult.message("")
+                }
                 return
             }
             
@@ -44,7 +47,10 @@ class ChatManager(private val radium: Radium) {
                 if (timeDiff < chatSlowDelay) {
                     val remainingTime = (chatSlowDelay - timeDiff).toInt() + 1
                     player.sendMessage(yamlFactory.getMessageComponent("chat.slow", "time" to remainingTime.toString()))
-                    event.result = PlayerChatEvent.ChatResult.denied()
+                    // For signed messages, replace with empty message instead of denying
+                    if (event.result.isAllowed) {
+                        event.result = PlayerChatEvent.ChatResult.message("")
+                    }
                     return
                 }
                 
