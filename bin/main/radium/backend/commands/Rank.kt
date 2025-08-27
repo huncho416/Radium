@@ -25,20 +25,20 @@ class Rank(private val radium: Radium) {
     @Command("rank", "ranks")
     @CommandPermission("radium.rank.use")
     fun rankUsage(actor: Player) {
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.header"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.main"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.delete"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setprefix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setsuffix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.settabprefix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.settabsuffix"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setcolor"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setweight"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.permission_add"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.permission_remove"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.inherit"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.info"))
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.list"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.header"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.main"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.delete"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setprefix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setsuffix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.settabprefix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.settabsuffix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setcolor"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.setweight"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.permission_add"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.permission_remove"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.inherit"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.info"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.usage.list"))
     }
 
     @Subcommand("create")
@@ -362,7 +362,7 @@ class Rank(private val radium: Radium) {
     )  {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.info.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.info.usage"))
                 return
             }
 
@@ -393,40 +393,40 @@ class Rank(private val radium: Radium) {
 
                 // Build the component for display
                 val component = Component.text()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.header", "rank" to rank.name))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.header", "rank" to rank.name))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.prefix", "prefix" to rank.prefix))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.prefix", "prefix" to rank.prefix))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.suffix", "suffix" to (rank.suffix ?: "None")))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.suffix", "suffix" to (rank.suffix ?: "None")))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.tabprefix", "tabprefix" to (rank.tabPrefix ?: "Uses regular prefix")))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.tabprefix", "tabprefix" to (rank.tabPrefix ?: "Uses regular prefix")))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.tabsuffix", "tabsuffix" to (rank.tabSuffix ?: "None")))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.tabsuffix", "tabsuffix" to (rank.tabSuffix ?: "None")))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.color", "color" to rank.color))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.color", "color" to rank.color))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.weight", "weight" to rank.weight.toString()))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.weight", "weight" to rank.weight.toString()))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.inherits",
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.inherits",
                         "inherits" to if (directInherits.isEmpty()) "None" else directInherits.joinToString(", ")
                     ))
                     .appendNewline()
-                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.permissions"))
+                    .append(radium.yamlFactory.getMessageComponent("rank.info.permissions"))
                     .appendNewline()
 
                 // Display permissions in requested format
                 if (permissionMap.isEmpty()) {
-                    component.append(radium.yamlFactory.getMessageComponent("commands.rank.info.none"))
+                    component.append(radium.yamlFactory.getMessageComponent("rank.info.none"))
                 } else {
                     // First show own permissions
                     permissionMap.entries.filter { it.value == null }.forEach { (perm, _) ->
-                        component.append(radium.yamlFactory.getMessageComponent("commands.rank.info.permission", "permission" to perm))
+                        component.append(radium.yamlFactory.getMessageComponent("rank.info.permission", "permission" to perm))
                             .appendNewline()
                     }
 
                     // Then show inherited permissions with source
                     permissionMap.entries.filter { it.value != null }.forEach { (perm, source) ->
-                        component.append(radium.yamlFactory.getMessageComponent("commands.rank.info.inherited_permission",
+                        component.append(radium.yamlFactory.getMessageComponent("rank.info.inherited_permission",
                             "permission" to perm,
                             "source" to source!!
                         ))
