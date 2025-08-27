@@ -2,35 +2,115 @@ package radium.backend.commands
 
 import com.velocitypowered.api.proxy.Player
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import revxrsal.commands.annotation.Command
+import revxrsal.commands.annotation.Subcommand
+import revxrsal.commands.annotation.Optional
 import revxrsal.commands.velocity.annotation.CommandPermission
 import radium.backend.Radium
+import radium.backend.annotations.OnlinePlayers
+import radium.backend.vanish.VanishLevel
 
 @Command("vanish")
-@CommandPermission("radium.staff")
+@CommandPermission("radium.vanish.use")
 class Vanish(private val radium: Radium) {
 
-    private val staffManager = radium.staffManager
+    private val vanishManager = radium.networkVanishManager
     private val yamlFactory = radium.yamlFactory
 
     @Command("vanish", "v")
-    @CommandPermission("radium.vanish.use")
-    suspend fun toggleVanish(actor: Player) {
-        val isVanished = staffManager.vanishToggle(actor)
-
-        // Send feedback to the player based on their new vanish state
-        if (isVanished) {
-            actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_vanished"))
+    fun toggleVanish(actor: Player) {
+        val isCurrentlyVanished = vanishManager.isVanished(actor.uniqueId)
+        val newState = !isCurrentlyVanished
+        
+        val success = vanishManager.setVanishState(actor, newState)
+        
+        if (success) {
+            if (newState) {
+                actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_vanished"))
+            } else {
+                actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_visible"))
+            }
         } else {
-            actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_visible"))
+            actor.sendMessage(Component.text("Vanish state unchanged.", NamedTextColor.YELLOW))
         }
     }
 
-    @Command("vanish auto")
+    @Subcommand("player")
+    @CommandPermission("radium.vanish.others")
+    fun vanishPlayer(actor: Player, @OnlinePlayers targetName: String, @Optional state: String?) {
+        val target = radium.server.getPlayer(targetName).orElse(null)
+        if (target == null) {
+            actor.sendMessage(yamlFactory.getMessageComponent("general.player_not_found", "target" to targetName))
+            return
+        }
+        
+        val newState = when (state?.lowercase()) {
+            "on", "true", "enable" -> true
+            "off", "false", "disable" -> false
+            null -> !vanishManager.isVanished(target.uniqueId) // Toggle if no state specified
+            else -> {
+                actor.sendMessage(Component.text("Invalid state. Use: on, off, or leave empty to toggle.", NamedTextColor.RED))
+                return
+            }
+        }
+        
+        val success = vanishManager.setVanishState(target, newState, vanishedBy = actor)
+        
+        if (success) {
+            val stateText = if (newState) "vanished" else "visible"
+            actor.sendMessage(Component.text("${target.username} is now $stateText.", NamedTextColor.GREEN))
+            
+            if (target.uniqueId != actor.uniqueId) {
+                if (newState) {
+                    target.sendMessage(yamlFactory.getMessageComponent("vanish.vanished_by_staff", "staff" to actor.username))
+                } else {
+                    target.sendMessage(yamlFactory.getMessageComponent("vanish.unvanished_by_staff", "staff" to actor.username))
+                }
+            }
+        } else {
+            actor.sendMessage(Component.text("Vanish state unchanged.", NamedTextColor.YELLOW))
+        }
+    }
+
+    @Subcommand("list")
+    @CommandPermission("radium.vanish.list")
+    fun listVanished(actor: Player) {
+        val vanishedPlayers = vanishManager.getVanishedPlayers()
+        
+        if (vanishedPlayers.isEmpty()) {
+            actor.sendMessage(Component.text("No players are currently vanished.", NamedTextColor.YELLOW))
+            return
+        }
+        
+        actor.sendMessage(Component.text("Vanished Players:", NamedTextColor.YELLOW))
+        
+        vanishedPlayers.forEach { (playerId, vanishData) ->
+            val player = radium.server.getPlayer(playerId).orElse(null)
+            val playerName = player?.username ?: "Unknown"
+            
+            if (VanishLevel.canSeeVanished(actor, vanishData.level)) {
+                val duration = vanishData.getFormattedDuration()
+                val levelText = vanishData.level.displayName
+                
+                actor.sendMessage(Component.text()
+                    .append(Component.text("- ", NamedTextColor.GRAY))
+                    .append(Component.text(playerName, NamedTextColor.WHITE))
+                    .append(Component.text(" (", NamedTextColor.GRAY))
+                    .append(Component.text(levelText, NamedTextColor.YELLOW))
+                    .append(Component.text(", ", NamedTextColor.GRAY))
+                    .append(Component.text(duration, NamedTextColor.GREEN))
+                    .append(Component.text(")", NamedTextColor.GRAY))
+                    .build())
+            }
+        }
+    }
+
+    @Subcommand("auto")
     @CommandPermission("radium.vanish.auto")
     suspend fun autoVanish(actor: Player) {
         // Get the player's profile
-        val profile = radium.connectionHandler.getPlayerProfile(actor.uniqueId)
+        val profile = radium.connectionHandler.getPlayerProfile(actor.uniqueId, actor.username)
 
         if (profile == null) {
             actor.sendMessage(yamlFactory.getMessageComponent("general.player_not_found", "target" to actor.username))
@@ -52,42 +132,5 @@ class Vanish(private val radium: Radium) {
         } else {
             actor.sendMessage(yamlFactory.getMessageComponent("vanish.auto_disabled"))
         }
-    }
-
-    @Command("vanish list", "v list")
-    @CommandPermission("radium.vanish.list")
-    suspend fun listVanished(actor: Player) {
-        val visibleVanished = staffManager.getVisibleVanishedPlayers(actor)
-        
-        if (visibleVanished.isEmpty()) {
-            actor.sendMessage(yamlFactory.getMessageComponent("vanish.list.none"))
-        } else {
-            actor.sendMessage(yamlFactory.getMessageComponent("vanish.list.header", "count" to visibleVanished.size.toString()))
-            
-            visibleVanished.forEach { vanishedPlayer ->
-                // Get the vanished player's profile to show their rank
-                val profile = radium.connectionHandler.findPlayerProfile(vanishedPlayer.uniqueId.toString())
-                val rankName = if (profile != null) {
-                    val highestRank = profile.getHighestRank(radium.rankManager)
-                    highestRank?.name ?: "Default"
-                } else {
-                    "Unknown"
-                }
-                
-                actor.sendMessage(yamlFactory.getMessageComponent("vanish.list.entry", 
-                    "player" to vanishedPlayer.username,
-                    "rank" to rankName
-                ))
-            }
-        }
-    }
-
-    @Command("vanish help", "v help")
-    @CommandPermission("radium.vanish.use")
-    fun vanishUsage(actor: Player) {
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.vanish.header"))
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.vanish.usage.main"))
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.vanish.usage.auto"))
-        actor.sendMessage(yamlFactory.getMessageComponent("commands.vanish.usage.list"))
     }
 }

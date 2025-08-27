@@ -587,3 +587,12 @@ commands:
 chat:
   muted: "&cChat is currently muted."
   slow: "&cYou must wait {time} more seconds before chatting."
+
+# Vanish System Messages
+vanish:
+  now_vanished: "&aYou are now vanished."
+  now_visible: "&cYou are now visible."
+  vanished_by_staff: "&eYou have been vanished by {staff}."
+  unvanished_by_staff: "&eYou have been made visible by {staff}."
+  auto_enabled: "&aAuto-vanish on join enabled."
+  auto_disabled: "&cAuto-vanish on join disabled."

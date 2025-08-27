@@ -46,6 +46,7 @@ import radium.backend.player.RankManager
 import radium.backend.player.ChatManager
 import radium.backend.player.TabListManager
 import radium.backend.player.staff.StaffManager
+import radium.backend.vanish.NetworkVanishManager
 import radium.backend.util.LettuceCache
 import radium.backend.util.MongoStream
 import radium.backend.api.RadiumApiServer
@@ -81,6 +82,7 @@ class Radium @Inject constructor(
     val staffManager = StaffManager(this)
     val chatManager = ChatManager(this)
     val tabListManager = TabListManager(this)
+    val networkVanishManager = NetworkVanishManager(this)
 
     // Punishment System - initialized after database connection
     lateinit var punishmentRepository: PunishmentRepository
@@ -290,6 +292,7 @@ class Radium @Inject constructor(
         server.eventManager.register(this, staffManager)
         server.eventManager.register(this, chatManager)
         server.eventManager.register(this, tabListManager)
+        server.eventManager.register(this, networkVanishManager)
         
         // Register punishment event listener
         server.eventManager.register(this, punishmentListener)

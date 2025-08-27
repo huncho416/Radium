@@ -9,6 +9,7 @@ import io.ktor.server.routing.*
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import radium.backend.Radium
 import radium.backend.api.dto.*
+import radium.backend.vanish.VanishLevel
 
 fun Route.playerRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLogger) {
     route("/players") {
@@ -148,9 +149,9 @@ fun Route.playerRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLog
 
             try {
                 if (vanishRequest.vanished) {
-                    plugin.staffManager.vanish(player)
+                    plugin.networkVanishManager.setVanishState(player, true, VanishLevel.HELPER, null, "API Request")
                 } else {
-                    plugin.staffManager.unvanish(player)
+                    plugin.networkVanishManager.setVanishState(player, false, null, null, "API Request")
                 }
                 call.respond(VanishResponse(playerName, vanishRequest.vanished, true))
             } catch (e: Exception) {

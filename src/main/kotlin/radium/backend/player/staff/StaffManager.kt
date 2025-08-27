@@ -44,17 +44,15 @@ class StaffManager(private val radium: Radium) {
 
         // Check if autoVanish is enabled for this staff member
         // Get the player's profile from cache or database
-        val profile = radium.connectionHandler.getPlayerProfile(player.uniqueId)
+        val profile = radium.connectionHandler.getPlayerProfile(player.uniqueId, player.username)
 
         // Check if autoVanish is enabled (default to false if profile is null or setting is not found)
         val autoVanishEnabled = profile?.getSetting("autoVanish")?.toBoolean() ?: false
 
-        // If autoVanish is enabled, add them to the vanish map
         if (autoVanishEnabled) {
-            GlobalScope.launch {
-                vanish(player)
-            }
-            player.sendMessage(yamlFactory.getMessageComponent("staff.auto_vanish_enabled"))
+            // Auto-vanish the staff member
+            radium.networkVanishManager.setVanishState(player, true)
+            radium.logger.debug("Auto-vanished ${player.username} on staff join")
         }
     }
 
@@ -64,6 +62,13 @@ class StaffManager(private val radium: Radium) {
     fun removeStaff(player: Player) {
         onlineStaff.remove(player.uniqueId)
         messageChannel.remove(player.uniqueId)
+    }
+
+    /**
+     * Checks if a player is staff (has staff permissions)
+     */
+    fun isStaff(player: Player): Boolean {
+        return player.hasPermission("radium.staff") || onlineStaff.containsKey(player.uniqueId)
     }
 
     /**
@@ -116,118 +121,31 @@ class StaffManager(private val radium: Radium) {
     }
 
     /**
-     * Vanishes a player, making them invisible to other players.
-     * Returns true if the player was successfully vanished, false if they were already vanished.
-     * 
-     * NOTE: This implementation handles tab list visibility through proxy mechanisms.
-     * Actual in-game player visibility (hiding the player model/entity) is handled by 
-     * the backend server's vanish plugin via the spoofed vanish command.
-     */
-    suspend fun vanish(player: Player): Boolean {
-        if (vanishedStaff.containsKey(player.username)) {
-            return false // Player already vanished
-        }
-
-        vanishedStaff[player.username] = player
-        
-        // Send vanish command to backend server for actual player visibility
-        val currentServer = player.currentServer.orElse(null)
-        if (currentServer != null) {
-            try {
-                // Execute vanish command on the backend server
-                player.spoofChatInput("/vanish")
-            } catch (e: Exception) {
-                radium.logger.warn("Failed to execute vanish command on backend server for ${player.username}: ${e.message}")
-            }
-        }
-        
-        // Update tab lists for all players to reflect the vanish status
-        // Actual player visibility (seeing the player in-game) is handled by the backend server vanish command
-        radium.scope.launch {
-            radium.tabListManager.updateAllPlayersTabList()
-            radium.logger.debug("Refreshed all tab lists after ${player.username} vanished")
-        }
-        
-        // Publish vanish event to Redis
-        publishVanishEvent(player, true)
-        
-        radium.logger.debug("${player.username} vanished from ${radium.server.allPlayers.count { !canSeeVanishedPlayerEnhanced(it, player) }} players")
-        
-        return true
-    }
-
-    /**
-     * Unvanishes a player, making them visible to other players again.
-     * Returns true if the player was successfully unvanished, false if they weren't vanished.
-     */
-    suspend fun unvanish(player: Player): Boolean {
-        if (!vanishedStaff.containsKey(player.username)) {
-            return false // Player not vanished
-        }
-
-        vanishedStaff.remove(player.username)
-        radium.logger.debug("${player.username} removed from vanish list")
-        
-        // Send unvanish command to backend server for actual player visibility
-        val currentServer = player.currentServer.orElse(null)
-        if (currentServer != null) {
-            try {
-                // Execute vanish command again to toggle off on the backend server
-                player.spoofChatInput("/vanish")
-            } catch (e: Exception) {
-                radium.logger.warn("Failed to execute unvanish command on backend server for ${player.username}: ${e.message}")
-            }
-        }
-        
-        // Show the player to all online players again by refreshing all tab lists
-        // This handles re-adding players who were removed from tab lists during vanish
-        radium.scope.launch {
-            radium.logger.debug("Starting tab list refresh for unvanished player: ${player.username}")
-            
-            // First update this specific player's tab entry to remove vanish indicator
-            radium.tabListManager.updatePlayerTabList(player)
-            
-            // Then update all players' tab lists to ensure the unvanished player appears for everyone
-            radium.tabListManager.updateAllPlayersTabList()
-            
-            radium.logger.debug("Completed tab list refresh for unvanished player: ${player.username}")
-        }
-        
-        // Publish unvanish event to Redis
-        publishVanishEvent(player, false)
-        
-        // Player is now unvanished - the API can be used to check vanish status if needed
-        radium.logger.debug("${player.username} successfully unvanished")
-
-        return true
-    }
-
-    /**
-     * Toggles a player's vanish status.
+     * Toggles a player's vanish status using the new network vanish system.
      * Returns true if the player is now vanished, false if they are now visible.
      */
-    suspend fun vanishToggle(player: Player): Boolean {
-        return if (isVanished(player)) {
-            unvanish(player)
-            false // Player is now visible
-        } else {
-            vanish(player)
-            true // Player is now vanished
-        }
+    fun vanishToggle(player: Player): Boolean {
+        val currentlyVanished = isVanished(player)
+        val newState = !currentlyVanished
+        
+        radium.networkVanishManager.setVanishState(player, newState)
+        return newState
     }
 
     /**
      * Checks if a player is currently vanished.
      */
     fun isVanished(player: Player): Boolean {
-        return vanishedStaff.containsKey(player.username)
+        return radium.networkVanishManager.isVanished(player.uniqueId)
     }
 
     /**
      * Gets all currently vanished staff members.
      */
     fun getVanishedStaff(): List<Player> {
-        return vanishedStaff.values.toList()
+        return radium.networkVanishManager.getVanishedPlayers().mapNotNull { (playerId, _) ->
+            radium.server.getPlayer(playerId).orElse(null)
+        }.filter { isStaff(it) }
     }
 
     /**
