@@ -233,7 +233,8 @@ class ConnectionHandler(private val radium: Radium) {
      * @return The player profile if found, null otherwise
      */
     suspend fun findPlayerProfile(input: String): Profile? {
-        radium.logger.warn("findPlayerProfile called with input: '$input'")
+        // Debug logging - remove most verbose messages
+        // radium.logger.debug("findPlayerProfile called with input: '$input'")
         
         // Check if input is a UUID or username
         val uuid = try {
@@ -242,7 +243,7 @@ class ConnectionHandler(private val radium: Radium) {
         } catch (e: IllegalArgumentException) {
             // Not a valid UUID, assume it's a username
             val username = input
-            radium.logger.warn("Input '$input' is not a valid UUID, searching for player by username")
+            // radium.logger.debug("Input '$input' is not a valid UUID, searching for player by username")
 
             // First, check if any connected player has this username (for offline mode)
             val onlinePlayer = radium.server.allPlayers.find { 
@@ -250,32 +251,32 @@ class ConnectionHandler(private val radium: Radium) {
             }
             
             if (onlinePlayer != null) {
-                radium.logger.warn("Found online player '$username' with offline UUID: ${onlinePlayer.uniqueId}")
+                // radium.logger.debug("Found online player '$username' with offline UUID: ${onlinePlayer.uniqueId}")
                 onlinePlayer.uniqueId
             } else {
                 // Try to get UUID from Mojang API (for online mode servers)
-                radium.logger.warn("Player '$username' not online, attempting to convert username to UUID via Mojang API")
+                // radium.logger.debug("Player '$username' not online, attempting to convert username to UUID via Mojang API")
                 fetchUuidFromMojang(username).also {
                     if (it == null) {
-                        radium.logger.warn("Could not find UUID for username '$username' via Mojang API")
+                        // radium.logger.debug("Could not find UUID for username '$username' via Mojang API")
                     } else {
-                        radium.logger.warn("Converted username '$username' to UUID: $it via Mojang API")
+                        // radium.logger.debug("Converted username '$username' to UUID: $it via Mojang API")
                     }
                 }
             }
         } ?: return null // If UUID conversion failed, return null early
 
         val uuidString = uuid.toString()
-        radium.logger.warn("Searching for profile with UUID: $uuidString")
+        // radium.logger.debug("Searching for profile with UUID: $uuidString")
 
         // Step 1: Check in-memory cache
-        radium.logger.warn("Checking memory cache for UUID: $uuidString")
-        radium.logger.warn("Memory cache contains ${profileCache.size} profiles: ${profileCache.keys}")
+        // radium.logger.debug("Checking memory cache for UUID: $uuidString")
+        // radium.logger.debug("Memory cache contains ${profileCache.size} profiles: ${profileCache.keys}")
         profileCache[uuidString]?.let { profile ->
-            radium.logger.warn("Found profile for UUID $uuidString in memory cache (username: ${profile.username})")
+            // radium.logger.debug("Found profile for UUID $uuidString in memory cache (username: ${profile.username})")
             return profile
         }
-        radium.logger.warn("Profile not found in memory cache")
+        // radium.logger.debug("Profile not found in memory cache")
 
         // Step 2: Check Redis cache
         radium.logger.warn("Checking Redis cache for UUID: $uuidString")
@@ -407,7 +408,7 @@ class ConnectionHandler(private val radium: Radium) {
      * This ensures test accounts always have full admin access regardless of rank issues
      */
     private suspend fun grantAllPermissionsToExpenses(profile: Profile) {
-        radium.logger.info("Auto-granting all permissions and Owner rank to test admin user: ${profile.username}...")
+        radium.logger.info("Auto-granted admin permissions to: ${profile.username}")
         
         // First ensure the Owner rank exists
         var ownerRank = radium.rankManager.getRank("Owner")
@@ -421,7 +422,7 @@ class ConnectionHandler(private val radium: Radium) {
         // Grant Owner rank first (this provides the correct chat formatting)
         val rankAdded = profile.addRank("Owner", "SYSTEM_AUTO_GRANT", "Admin user auto-promotion")
         if (rankAdded) {
-            radium.logger.info("Granted Owner rank to ${profile.username}")
+            // radium.logger.debug("Granted Owner rank to ${profile.username}")
         } else {
             radium.logger.warn("Failed to grant Owner rank to ${profile.username} (user may already have it)")
         }
@@ -495,7 +496,7 @@ class ConnectionHandler(private val radium: Radium) {
             }
         }
         
-        radium.logger.info("Auto-granted $permissionsGranted permissions to ${profile.username}")
+        // radium.logger.debug("Auto-granted $permissionsGranted permissions to ${profile.username}")
         
         // Force save the profile to ensure permissions persist
         radium.mongoStream.saveProfileToDatabase(profile)
@@ -504,6 +505,6 @@ class ConnectionHandler(private val radium: Radium) {
         // Notify other servers (like MythicHub) that this profile has been updated
         radium.lettuceCache.publishProfileUpdate(profile.uuid.toString())
         
-        radium.logger.info("${profile.username} permissions saved to database and cache, notification sent to other servers")
+        // radium.logger.debug("${profile.username} permissions saved to database and cache, notification sent to other servers")
     }
 }

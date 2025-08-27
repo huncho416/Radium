@@ -138,6 +138,22 @@ class PunishmentManager(
                 clearPlayerInventory(target, staff)
             }
 
+            // Send success message to staff
+            val successMessageKey = if (silent) {
+                "punishments.${type.name.lowercase()}.success_silent"
+            } else {
+                "punishments.${type.name.lowercase()}.success"
+            }
+            
+            staff.sendMessage(
+                radium.yamlFactory.getMessageComponent(
+                    successMessageKey,
+                    "target" to targetName,
+                    "reason" to reason,
+                    "duration" to (duration ?: "permanent")
+                )
+            )
+
             // Broadcast or notify staff
             if (silent) {
                 notifyStaff(punishment, staff)
@@ -190,13 +206,21 @@ class PunishmentManager(
                 return false
             }
 
+            // Send success message to staff
+            val successMessageKey = "punishments.un${type.name.lowercase()}.success"
+            staff.sendMessage(
+                radium.yamlFactory.getMessageComponent(
+                    successMessageKey,
+                    "target" to targetName
+                )
+            )
+
             // Broadcast or notify staff
+            val broadcastMessageKey = "punishments.un${type.name.lowercase()}.broadcast"
             val message = radium.yamlFactory.getMessageComponent(
-                "punishments.revoked",
-                "player" to targetName,
-                "type" to type.displayName,
-                "staff" to staff.username,
-                "reason" to reason
+                broadcastMessageKey,
+                "target" to targetName,
+                "staff" to staff.username
             )
 
             if (silent) {
@@ -356,11 +380,11 @@ class PunishmentManager(
      * Broadcast punishment to all players
      */
     private fun broadcastPunishment(punishment: Punishment) {
-        val messageKey = "punishments.broadcast.${punishment.type.name.lowercase()}"
+        val messageKey = "punishments.${punishment.type.name.lowercase()}.broadcast"
 
         val message = radium.yamlFactory.getMessageComponent(
             messageKey,
-            "player" to punishment.playerName,
+            "target" to punishment.playerName,
             "staff" to punishment.issuedByName,
             "reason" to punishment.reason
         )
@@ -372,12 +396,12 @@ class PunishmentManager(
      * Notify staff about silent punishment
      */
     private fun notifyStaff(punishment: Punishment, staff: Player) {
-        val messageKey = "punishments.broadcast.${punishment.type.name.lowercase()}"
+        val messageKey = "punishments.${punishment.type.name.lowercase()}.broadcast"
         val silentSuffix = radium.yamlFactory.getMessageComponent("punishments.silent_suffix")
 
         val message = radium.yamlFactory.getMessageComponent(
             messageKey,
-            "player" to punishment.playerName,
+            "target" to punishment.playerName,
             "staff" to punishment.issuedByName,
             "reason" to punishment.reason
         ).append(Component.text(" ")).append(silentSuffix)

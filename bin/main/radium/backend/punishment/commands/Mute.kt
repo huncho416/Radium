@@ -21,6 +21,12 @@ class Mute(private val radium: Radium) {
         reason: String,
         @Flag("s") silent: Boolean = false
     ) {
+        // Check for both old and new permission formats for lobby compatibility
+        if (!actor.hasPermission("radium.punish.mute") && !actor.hasPermission("radium.command.mute")) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_permission"))
+            return
+        }
+        
         if (target.isEmpty() || reason.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.mute.usage"))
             return
@@ -110,6 +116,12 @@ class Mute(private val radium: Radium) {
         reason: String,
         @Flag("s") silent: Boolean = false
     ) {
+        // Check for both old and new permission formats for lobby compatibility
+        if (!actor.hasPermission("radium.punish.unmute") && !actor.hasPermission("radium.command.unmute")) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_permission"))
+            return
+        }
+        
         if (target.isEmpty() || reason.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.unmute.usage"))
             return

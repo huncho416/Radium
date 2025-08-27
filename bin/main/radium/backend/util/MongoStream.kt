@@ -175,7 +175,7 @@ class MongoStream(val logger: ComponentLogger) {
      * @throws IllegalStateException if not connected to a database
      */
     fun getDatabase(): MongoDatabase {
-        logger.info(Component.text("getDatabase() called - database is ${if (database != null) "not null" else "null"}", NamedTextColor.YELLOW))
+        logger.debug(Component.text("getDatabase() called - database is ${if (database != null) "not null" else "null"}", NamedTextColor.GRAY))
         return database ?: throw IllegalStateException("Not connected to a database. Call connect() first.")
     }
 

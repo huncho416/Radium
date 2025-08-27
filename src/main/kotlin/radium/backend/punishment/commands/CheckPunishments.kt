@@ -25,6 +25,12 @@ class CheckPunishments(private val radium: Radium) {
         target: String,
         @Optional page: Int = 1
     ) {
+        // Check for both old and new permission formats for lobby compatibility
+        if (!actor.hasPermission("radium.punish.check") && !actor.hasPermission("radium.command.checkpunishments")) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_permission"))
+            return
+        }
+        
         if (target.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.checkpunishments.usage"))
             return
@@ -47,6 +53,19 @@ class CheckPunishments(private val radium: Radium) {
                 val pageSize = 10
                 val actualPage = maxOf(1, page) - 1 // Convert to 0-based
 
+                // Get total count first
+                val totalCount = radium.punishmentManager.repository.countPunishments(profile.uuid.toString())
+                
+                if (totalCount == 0L) {
+                    actor.sendMessage(
+                        radium.yamlFactory.getMessageComponent(
+                            "punishments.no_punishments_found",
+                            "player" to profile.username
+                        )
+                    )
+                    return@launch
+                }
+
                 // Get punishment history
                 val punishments = radium.punishmentManager.getPunishmentHistory(
                     profile.uuid.toString(),
@@ -54,14 +73,14 @@ class CheckPunishments(private val radium: Radium) {
                     pageSize
                 )
 
-                val totalCount = radium.punishmentManager.repository.countPunishments(profile.uuid.toString())
                 val totalPages = ((totalCount + pageSize - 1) / pageSize).toInt()
 
-                if (punishments.isEmpty()) {
+                if (punishments.isEmpty() && actualPage >= totalPages) {
                     actor.sendMessage(
                         radium.yamlFactory.getMessageComponent(
-                            "punishments.no_punishments_found",
-                            "player" to profile.username
+                            "commands.checkpunishments.invalid_page",
+                            "page" to (actualPage + 1).toString(),
+                            "maxPage" to totalPages.toString()
                         )
                     )
                     return@launch

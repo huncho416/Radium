@@ -4,10 +4,12 @@
 enabled: true
 
 # Default template when no rank-specific template is found
-# Supports MiniMessage; placeholders: <rank_name>, <rank_color>, <username>, <server>, <weight>
-default-template: "<gray><username></gray>"
+# Supports MiniMessage; placeholders: <prefix>, <suffix>, <rank_name>, <rank_color>, <username>, <server>, <weight>
+default-template: "<prefix><rank_color><username><suffix>"
 
 # Rank-specific nametag templates
+# Use <prefix> and <suffix> placeholders to automatically use rank's prefix/suffix
+# Or override with custom templates for specific ranks
 ranks:
   OWNER:
     template: "<#ff355e><b>OWNER</b></#ff355e> <white><username>"
@@ -26,11 +28,11 @@ ranks:
     show-to-self: false
     show-when-vanished: false
   VIP:
-    template: "<gold><b>VIP</b></gold> <white><username>"
+    template: "<prefix><rank_color><username><suffix>"
     show-to-self: false
     show-when-vanished: true
   DEFAULT:
-    template: "<gray><username></gray>"
+    template: "<prefix><rank_color><username><suffix>"
     show-to-self: false
     show-when-vanished: true
 

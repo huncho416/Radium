@@ -64,10 +64,10 @@ dependencies {
     implementation("io.ktor:ktor-server-auth:2.3.12")
     implementation("io.ktor:ktor-server-status-pages:2.3.12")
 
-    // MSNameTags for nametag system
-    implementation("com.github.echolightmc:MSNameTags:1.4-SNAPSHOT") {
-        exclude(group = "net.minestom", module = "minestom-snapshots")
-    }
+    // MSNameTags for nametag system - temporarily disabled due to API compatibility issues
+    // implementation("com.github.echolightmc:MSNameTags:1.4-SNAPSHOT") {
+    //     exclude(group = "net.minestom", module = "minestom-snapshots")
+    // }
     
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")

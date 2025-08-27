@@ -20,6 +20,12 @@ class Kick(private val radium: Radium) {
         reason: String,
         @Flag("s") silent: Boolean = false
     ) {
+        // Check for both old and new permission formats for lobby compatibility
+        if (!actor.hasPermission("radium.punish.kick") && !actor.hasPermission("radium.command.kick")) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_permission"))
+            return
+        }
+        
         if (target.isEmpty() || reason.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.kick.usage"))
             return

@@ -118,6 +118,9 @@ class RadiumApiServer(
 
         // Rank routes
         rankRoutes(plugin, server, logger)
+
+        // Punishment routes
+        punishmentRoutes(plugin, server, logger)
     }
 
     fun stop() {

@@ -257,4 +257,20 @@ class PunishmentRepository(
             false
         }
     }
+
+    /**
+     * Find all punishments for a player (both active and inactive)
+     */
+    suspend fun findPunishmentsForPlayer(playerId: String): List<Punishment> {
+        return try {
+            val filter = Document("playerId", playerId)
+            collection.find(filter)
+                .asFlow()
+                .toList()
+                .map { Punishment.fromDocument(it) }
+        } catch (e: Exception) {
+            logger.error(Component.text("Failed to find punishments for player: ${e.message}", NamedTextColor.RED))
+            emptyList()
+        }
+    }
 }

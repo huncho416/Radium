@@ -3,7 +3,18 @@
 # Friend command messages (direct structure for Friend.kt)
 friend:
   usage:
-    header: "&eUsage: /friend <add|remove|list> [player]"
+    header: "&eUsage:    setprefix:
+      usage: "&cUsage: /rank setprefix <name> <prefix>"
+      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
+    setsuffix:
+      usage: "&cUsage: /rank setsuffix <name> <suffix>"
+      success: "&aSet suffix for rank '{rank}' to '{suffix}'."
+    settabprefix:
+      usage: "&cUsage: /rank settabprefix <name> <prefix>"
+      success: "&aSet tab prefix for rank '{rank}' to '{prefix}'."
+    settabsuffix:
+      usage: "&cUsage: /rank settabsuffix <name> <suffix>"
+      success: "&aSet tab suffix for rank '{rank}' to '{suffix}'."<add|remove|list> [player]"
     main: "&e/friend &7- Show friend commands"
     add: "&e/friend add <player> &7- Add a friend"
     remove: "&e/friend remove <player> &7- Remove a friend"
@@ -82,12 +93,6 @@ commands:
     hover:
       expires_on: "&7Expires on: {date}"
       expired: "&7Expired on: {date}"
-      revoked_by: "&7Revoked by: {revoker}"
-      revoked_on: "&7Revoked on: {date}"
-      revoked_reason: "&7Reason: {reason}"
-      time_remaining: "&7Time remaining: {duration}"
-      duration: "&7Duration: {duration}"
-      click_to_revoke: "&7Click to revoke"
       
   revoke:
     header: "&eRevoke Commands:"
@@ -100,12 +105,20 @@ commands:
 
   gamemode:
     header: "&eGamemode Commands:"
+    usage:
+      main: "&e/gamemode <mode> [player] &7- Change gamemode"
+      gmc: "&e/gmc [player] &7- Set gamemode to creative"
+      gms: "&e/gms [player] &7- Set gamemode to survival"
+      gma: "&e/gma [player] &7- Set gamemode to adventure"
+      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
     success_self: "&aSet your gamemode to {gamemode}."
     success_other: "&aSet {target}'s gamemode to {gamemode}."
     invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
     player_not_found: "&cPlayer '{target}' not found or not online!"
+    no_permission: "&cYou don't have permission to change other players' gamemode!"
+    same_gamemode: "&cYou are already in {gamemode} mode!"
+    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
     redis_error: "&cFailed to send gamemode change request. Please try again."
-    not_connected: "&cTarget player is not connected to a backend server!"
       
   rank:
     header: "&eRank Commands:"
@@ -115,6 +128,9 @@ commands:
       create: "&e/rank create <name> &7- Create a new rank"
       delete: "&e/rank delete <name> &7- Delete a rank"
       setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
+      setsuffix: "&e/rank setsuffix <name> <suffix> &7- Set rank suffix"
+      settabprefix: "&e/rank settabprefix <name> <prefix> &7- Set tab-specific prefix"
+      settabsuffix: "&e/rank settabsuffix <name> <suffix> &7- Set tab-specific suffix"
       setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
       setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
       permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
@@ -135,6 +151,15 @@ commands:
     setprefix:
       usage: "&cUsage: /rank setprefix <name> <prefix>"
       success: "&aSet prefix for rank '{rank}' to '{prefix}'."
+    setsuffix:
+      usage: "&cUsage: /rank setsuffix <name> <suffix>"
+      success: "&aSet suffix for rank '{rank}' to '{suffix}'."
+    settabprefix:
+      usage: "&cUsage: /rank settabprefix <name> <prefix>"
+      success: "&aSet tab prefix for rank '{rank}' to '{prefix}'."
+    settabsuffix:
+      usage: "&cUsage: /rank settabsuffix <name> <suffix>"
+      success: "&aSet tab suffix for rank '{rank}' to '{suffix}'."
     setcolor:
       usage: "&cUsage: /rank setcolor <name> <color>"
       success: "&aSet color for rank '{rank}' to '{color}'."
@@ -161,6 +186,9 @@ commands:
       usage: "&cUsage: /rank info <name>"
       header: "&eRank Information for '{rank}':"
       prefix: "&7Prefix: {prefix}"
+      suffix: "&7Suffix: {suffix}"
+      tabprefix: "&7Tab Prefix: {tabprefix}"
+      tabsuffix: "&7Tab Suffix: {tabsuffix}"
       color: "&7Color: {color}"
       weight: "&7Weight: {weight}"
       inherits: "&7Inherits: {inherits}"
@@ -216,6 +244,14 @@ commands:
       usage: "&cUsage: /permission <player> clear"
       success: "&aCleared {count} permissions from {target}."
       
+  checkpunishments:
+    header: "&eCheck Punishments Commands:"
+    usage:
+      main: "&e/checkpunishments <player> [page] &7- View a player's punishment history"
+    profile_not_found: "&cProfile for '{target}' not found!"
+    no_punishments_found: "&a{player} has no punishment history."
+    invalid_page: "&cInvalid page {page}! Maximum page is {maxPage}."
+    
   friend:
     usage:
       header: "&eUsage: /friend <add|remove|list> [player]"
@@ -279,8 +315,6 @@ commands:
     header: "&eVanish Commands:"
     usage:
       main: "&e/vanish &7- Toggle vanish mode"
-      auto: "&e/vanish auto &7- Toggle auto-vanish on join"
-      list: "&e/vanish list &7- List vanished staff (based on rank)"
     enabled: "&aVanish enabled."
     disabled: "&cVanish disabled."
     
@@ -290,7 +324,7 @@ commands:
       main: "&e/lastseen <player> &7- Check when a player was last seen"
     profile_not_found: "&cProfile for '{target}' not found!"
     online: "&a{target} is currently online."
-    offline: "&e{target} was last seen {time} ago."
+    offline: "&e{target} was last seen {time}."
     never_joined: "&c{target} has never joined the server."
 
   message:
@@ -304,6 +338,37 @@ commands:
     reply_target_offline: "&cThe player you were messaging is no longer online!"
     sender_format: "&7[&eYou &7→ &e{target}&7] &f{message}"
     receiver_format: "&7[&e{sender} &7→ &eYou&7] &f{message}"
+
+  # Punishment Commands
+  ban:
+    usage: "&e/ban <player> <reason> [-s] [-c] &7- Ban a player"
+    
+  unban:
+    usage: "&e/unban <player> [reason] &7- Unban a player"
+    
+  tempban:
+    usage: "&e/tempban <player> <duration> <reason> [-s] [-c] &7- Temporarily ban a player"
+    
+  ipban:
+    usage: "&e/ipban <player> <reason> [-s] [-c] &7- IP ban a player"
+    
+  mute:
+    usage: "&e/mute <player> <duration> <reason> [-s] &7- Mute a player"
+    
+  unmute:
+    usage: "&e/unmute <player> [reason] &7- Unmute a player"
+    
+  kick:
+    usage: "&e/kick <player> <reason> [-s] &7- Kick a player"
+    
+  warn:
+    usage: "&e/warn <player> <reason> [-s] &7- Warn a player"
+    
+  blacklist:
+    usage: "&e/blacklist <player> <reason> [-s] [-c] &7- Blacklist a player"
+    
+  unblacklist:
+    usage: "&e/unblacklist <player> [reason] &7- Remove a player from blacklist"
 
 # General Messages
 general:
@@ -331,10 +396,6 @@ vanish:
   now_visible: "&cYou are no longer vanished."
   auto_enabled: "&aAuto-vanish enabled for staff."
   auto_disabled: "&cAuto-vanish disabled for staff."
-  list:
-    header: "&eVanished Staff ({count}):"
-    entry: "&7- &f{player} &8({rank})"
-    none: "&eNo vanished staff members visible to you."
 
 # Chat formatting
 chat:
@@ -342,7 +403,7 @@ chat:
 
 # Tab list formatting
 tab:
-  player_format: "{prefix}{color}{player}"
+  player_format: "{prefix}{color}{player}{suffix}"
   default_format: "&7{player}"
 
 reload:
@@ -351,978 +412,95 @@ reload:
       main: "&e/radiumreload &7- Reload plugin configuration"
     success: "&aRadium configuration reloaded successfully!"
     error: "&cFailed to reload configuration: {error}"
+
+# Punishment Messages
+punishments:
+  player_not_found: "&cPlayer '{target}' not found!"
+  error_occurred: "&cAn error occurred while processing the punishment!"
+  save_failed: "&cFailed to save punishment to database!"
+  revoke_failed: "&cFailed to revoke punishment from database!"
+  no_permission: "&cYou don't have permission to use this command!"
+  no_silent_permission: "&cYou don't have permission to issue silent punishments!"
+  no_clear_permission: "&cYou don't have permission to clear inventory on punishment!"
+  already_punished: "&c{target} is already {punishment_type}!"
+  invalid_duration: "&cInvalid duration format! Use formats like: 1d, 5h, 30m"
+  no_active_punishment: "&c{target} does not have an active {type}!"
+  player_must_be_online_for_ipban: "&cPlayer must be online for IP bans!"
+  silent_suffix: "&7[SILENT]"
   
-  gamemode:
-    header: "&eGamemode Commands:"
-    usage:
-      main: "&e/gamemode <mode> [player] &7- Change gamemode"
-      gmc: "&e/gmc [player] &7- Set gamemode to creative"
-      gms: "&e/gms [player] &7- Set gamemode to survival"
-      gma: "&e/gma [player] &7- Set gamemode to adventure"
-      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
-    success_self: "&aSet your gamemode to {gamemode}."
-    success_other: "&aSet {target}'s gamemode to {gamemode}."
-    invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
-    player_not_found: "&cPlayer '{target}' not found or not online!"
-    no_permission: "&cYou don't have permission to change other players' gamemode!"
-    same_gamemode: "&cYou are already in {gamemode} mode!"
-    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
-    redis_error: "&cFailed to send gamemode change request. Please try again."
-    not_connected: "&cTarget player is not connected to a backend server!"
-      
-  rank:
-    header: "&eRank Commands:"
-    usage:
-      main: "&e/rank &7- Show rank commands"
-      info: "&e/rank info <player> &7- Show a player's current rank"
-      create: "&e/rank create <name> &7- Create a new rank"
-      delete: "&e/rank delete <name> &7- Delete a rank"
-      setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
-      setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
-      setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
-      permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
-      permission_remove: "&e/rank permission remove <name> <permission> &7- Remove permission from rank"
-      inherit: "&e/rank inherit <name> <inherit> &7- Toggle rank inheritance"
-      info: "&e/rank info <name> &7- Get rank information"
-      list: "&e/rank list &7- List all ranks"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    current_rank: "&e{target}'s current rank: {rank}"
-    no_rank: "&c{target} has no active rank."
-    create:
-      usage: "&cUsage: /rank create <name>"
-      success: "&aCreated rank '{rank}' successfully."
-    delete:
-      usage: "&cUsage: /rank delete <name>"
-      success: "&aDeleted rank '{rank}' successfully."
-      not_found: "&cRank '{rank}' not found."
-    setprefix:
-      usage: "&cUsage: /rank setprefix <name> <prefix>"
-      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
-    setcolor:
-      usage: "&cUsage: /rank setcolor <name> <color>"
-      success: "&aSet color for rank '{rank}' to '{color}'."
-      invalid_color: "&cInvalid color '{color}'."
-      valid_colors: "&7Valid colors: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white"
-    setweight:
-      usage: "&cUsage: /rank setweight <name> <weight>"
-      success: "&aSet weight for rank '{rank}' to {weight}."
-    permission:
-      add:
-        usage: "&cUsage: /rank permission add <name> <permission>"
-        success: "&aAdded permission '{permission}' to rank '{rank}'."
-        already_has: "&cRank '{rank}' already has permission '{permission}'."
-      remove:
-        usage: "&cUsage: /rank permission remove <name> <permission>"
-        success: "&aRemoved permission '{permission}' from rank '{rank}'."
-        not_found: "&cRank '{rank}' does not have permission '{permission}'."
-    inherit:
-      usage: "&cUsage: /rank inherit <name> <inherit>"
-      add_success: "&aRank '{rank}' now inherits from '{inherit}'."
-      remove_success: "&aRank '{rank}' no longer inherits from '{inherit}'."
-      failed: "&cFailed to {operation} inheritance: {reason}"
-    info:
-      usage: "&cUsage: /rank info <name>"
-      header: "&eRank Information for '{rank}':"
-      prefix: "&7Prefix: {prefix}"
-      color: "&7Color: {color}"
-      weight: "&7Weight: {weight}"
-      inherits: "&7Inherits: {inherits}"
-      permissions: "&7Permissions:"
-      permission: "&8- {permission}"
-      inherited_permission: "&8- {permission} &7(from {source})"
-      none: "&7None"
-    list:
-      header: "&eAll Ranks:"
-      entry: "&e{name} &7(Weight: {weight}, Prefix: {prefix})"
-      none: "&cNo ranks found."
-    
-  permission:
-    header: "&ePermission Commands:"
-    command_list:
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    usage:
-      main: "&e/permission <add|remove|list> <player> [permission] [duration] &7- Manage player permissions"
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      usage: "&cUsage: /permission <player> add <permission> [duration]"
-      success: "&aAdded permission '{permission}' to {target}."
-      temporary: "&aAdded permission '{permission}' to {target} for {duration}."
-      already_has: "&c{target} already has permission '{permission}'."
-      invalid_duration: "&cInvalid duration: {duration}"
-      valid_formats: "&7Valid formats: 1d, 2h, 30m, etc."
-    remove:
-      usage: "&cUsage: /permission <player> remove <permission>"
-      success: "&aRemoved permission '{permission}' from {target}."
-      not_found: "&c{target} does not have permission '{permission}'."
-    list:
-      usage: "&cUsage: /permission <player> list"
-      header: "&e{target}'s Permissions ({total} total, {active} active, {inactive} inactive):"
-      none: "&c{target} has no permissions."
-      entry: "&7- {permission}"
-      granted_by: "&7Granted by: {granter}"
-      added_on: "&7Added on: {date}"
-      expires_on: "&7Expires on: {date}"
-      expired_on: "&7Expired on: {date}"
-      revoked_by: "&7Revoked by: {revoker}"
-      revoked_on: "&7Revoked on: {date}"
-      duration: "&7Duration: {duration}"
-      time_remaining: "&7Time remaining: {duration}"
-      click_to_remove: "&7Click to remove"
-    clear:
-      usage: "&cUsage: /permission <player> clear"
-      success: "&aCleared {count} permissions from {target}."
-      
-  friend:
-    usage:
-      header: "&eUsage: /friend <add|remove|list> [player]"
-      main: "&e/friend &7- Show friend commands"
-      add: "&e/friend add <player> &7- Add a friend"
-      remove: "&e/friend remove <player> &7- Remove a friend"
-      deny: "&e/friend deny <player> &7- Deny a friend request"
-      list: "&e/friend list &7- List your friends"
-      requests: "&e/friend requests &7- View friend requests"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      success: "&aAdded {target} as a friend."
-      already_friends: "&cYou are already friends with {target}."
-      cannot_add_self: "&cYou cannot add yourself as a friend."
-      user_not_found: "&cPlayer '{target}' not found!"
-      request_sent: "&eFriend request sent to {target}."
-      request_already_sent: "&cYou already have a pending friend request with {target}."
-      now_friends: "&aYou are now friends with {target}!"
-    remove:
-      success: "&aRemoved {target} from your friends list."
-      not_friends: "&cYou are not friends with {target}."
-    list:
-      header: "&eYour Friends:"
-      no_friends: "&cYou have no friends."
-      none: "&cYou have no friends."
-      online_format: "&a● &e{username}"
-      offline_format: "&8● &7{username}"
-      online_hover: "Currently on {server}"
-      offline_hover: "Last seen: {lastSeen}"
-      lastseen_unknown: "Unknown"
-    requests:
-      header: "&ePending Friend Requests:"
-      no_requests: "&cYou have no pending friend requests."
-      none: "&cYou have no pending friend requests."
-      incoming_header: "&eIncoming Requests:"
-      outgoing_header: "&eOutgoing Requests:"
-      incoming_format: "&e{username}"
-      outgoing_format: "&7→ {username}"
-      accept_button: "&a[Accept]"
-      deny_button: "&c[Deny]"
-      cancel_button: "&c[Cancel]"
-      accept_hover: "Click to accept"
-      deny_hover: "Click to deny"
-      cancel_hover: "Click to cancel"
-      toggle_info: "&7Use &e/friend requests toggle &7to enable/disable friend requests."
-      toggle_on: "&aFriend requests enabled."
-      toggle_off: "&cFriend requests disabled."
-    deny:
-      success: "&aDenied friend request from {target}."
-      no_request: "&cYou have no pending friend request from {target}."
-      
-  staffchat:
-    header: "&eStaff Chat Commands:"
-    usage:
-      main: "&e/staffchat &7- Toggle staff chat mode"
-      hide: "&e/staffchat hide &7- Toggle staff chat listening"
-      message: "&e/staffchat <message> &7- Send a staff chat message"
-    format: "&6[Staff] {player}: &f{message}"
-    
-  vanish:
-    header: "&eVanish Commands:"
-    usage:
-      main: "&e/vanish &7- Toggle vanish mode"
-      auto: "&e/vanish auto &7- Toggle auto-vanish on join"
-      list: "&e/vanish list &7- List vanished staff (based on rank)"
-    enabled: "&aVanish enabled."
-    disabled: "&cVanish disabled."
-    
-  lastseen:
-    header: "&eLastseen Commands:"
-    usage:
-      main: "&e/lastseen <player> &7- Check when a player was last seen"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    online: "&a{target} is currently online."
-    offline: "&e{target} was last seen {time} ago."
-    never_joined: "&c{target} has never joined the server."
-
-  message:
-    header: "&eMessage Commands:"
-    usage:
-      main: "&e/msg <player> <message> &7- Send a private message"
-      reply: "&e/r <message> &7- Reply to the last message"
-    player_not_found: "&cPlayer '{target}' not found!"
-    cannot_message_self: "&cYou cannot send a message to yourself!"
-    no_one_to_reply: "&cYou have no one to reply to!"
-    reply_target_offline: "&cThe player you were messaging is no longer online!"
-    sender_format: "&7[&eYou &7→ &e{target}&7] &f{message}"
-    receiver_format: "&7[&e{sender} &7→ &eYou&7] &f{message}"
-
-# General Messages
-general:
-  no_permission: "&cYou don't have permission to use this command."
-  player_not_found: "&cPlayer '{player}' not found."
-  invalid_duration: "&cInvalid duration format. Example: 1d, 2h, 30m"
-  database_error: "&cA database error occurred. Please try again later."
-
-# Staff Messages
-staff:
-  connected: "&a{player} joined the staff channel."
-  disconnected: "&c{player} left the staff channel."
-  chat_enabled: "&aStaff chat enabled."
-  chat_disabled: "&cStaff chat disabled."
-  listening_enabled: "&aStaff chat listening enabled."
-  listening_disabled: "&cStaff chat listening disabled."
-  auto_vanish_enabled: "&aAuto-vanish enabled for staff."
-  chat_format: "{prefix}{player} &7» {chatColor}{message}"
-  prefix: "&b[SC] "
-  server_switch: "&e{player} switched from {from} to {to}."
-
-# Vanish Messages
-vanish:
-  now_vanished: "&aYou are now vanished."
-  now_visible: "&cYou are no longer vanished."
-  auto_enabled: "&aAuto-vanish enabled for staff."
-  auto_disabled: "&cAuto-vanish disabled for staff."
-  list:
-    header: "&eVanished Staff ({count}):"
-    entry: "&7- &f{player} &8({rank})"
-    none: "&eNo vanished staff members visible to you."
-
-# Chat formatting
-chat:
-  main_format: "{prefix}{player} &7» {chatColor}{message}"
-
-# Tab list formatting
-tab:
-  player_format: "{prefix}{color}{player}"
-  default_format: "&7{player}"
-
-reload:
-    header: "&eReload Commands:"
-    usage:
-      main: "&e/radiumreload &7- Reload plugin configuration"
-    success: "&aRadium configuration reloaded successfully!"
-    error: "&cFailed to reload configuration: {error}"
+  player:
+    warn_notice: "&eYou have been warned!\n&eReason: {reason}"
   
-  gamemode:
-    header: "&eGamemode Commands:"
-    usage:
-      main: "&e/gamemode <mode> [player] &7- Change gamemode"
-      gmc: "&e/gmc [player] &7- Set gamemode to creative"
-      gms: "&e/gms [player] &7- Set gamemode to survival"
-      gma: "&e/gma [player] &7- Set gamemode to adventure"
-      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
-    success_self: "&aSet your gamemode to {gamemode}."
-    success_other: "&aSet {target}'s gamemode to {gamemode}."
-    invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
-    player_not_found: "&cPlayer '{target}' not found or not online!"
-    no_permission: "&cYou don't have permission to change other players' gamemode!"
-    same_gamemode: "&cYou are already in {gamemode} mode!"
-    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
-    redis_error: "&cFailed to send gamemode change request. Please try again."
-    not_connected: "&cTarget player is not connected to a backend server!"
-      
-  rank:
-    header: "&eRank Commands:"
-    usage:
-      main: "&e/rank &7- Show rank commands"
-      info: "&e/rank info <player> &7- Show a player's current rank"
-      create: "&e/rank create <name> &7- Create a new rank"
-      delete: "&e/rank delete <name> &7- Delete a rank"
-      setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
-      setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
-      setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
-      permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
-      permission_remove: "&e/rank permission remove <name> <permission> &7- Remove permission from rank"
-      inherit: "&e/rank inherit <name> <inherit> &7- Toggle rank inheritance"
-      info: "&e/rank info <name> &7- Get rank information"
-      list: "&e/rank list &7- List all ranks"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    current_rank: "&e{target}'s current rank: {rank}"
-    no_rank: "&c{target} has no active rank."
-    create:
-      usage: "&cUsage: /rank create <name>"
-      success: "&aCreated rank '{rank}' successfully."
-    delete:
-      usage: "&cUsage: /rank delete <name>"
-      success: "&aDeleted rank '{rank}' successfully."
-      not_found: "&cRank '{rank}' not found."
-    setprefix:
-      usage: "&cUsage: /rank setprefix <name> <prefix>"
-      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
-    setcolor:
-      usage: "&cUsage: /rank setcolor <name> <color>"
-      success: "&aSet color for rank '{rank}' to '{color}'."
-      invalid_color: "&cInvalid color '{color}'."
-      valid_colors: "&7Valid colors: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white"
-    setweight:
-      usage: "&cUsage: /rank setweight <name> <weight>"
-      success: "&aSet weight for rank '{rank}' to {weight}."
-    permission:
-      add:
-        usage: "&cUsage: /rank permission add <name> <permission>"
-        success: "&aAdded permission '{permission}' to rank '{rank}'."
-        already_has: "&cRank '{rank}' already has permission '{permission}'."
-      remove:
-        usage: "&cUsage: /rank permission remove <name> <permission>"
-        success: "&aRemoved permission '{permission}' from rank '{rank}'."
-        not_found: "&cRank '{rank}' does not have permission '{permission}'."
-    inherit:
-      usage: "&cUsage: /rank inherit <name> <inherit>"
-      add_success: "&aRank '{rank}' now inherits from '{inherit}'."
-      remove_success: "&aRank '{rank}' no longer inherits from '{inherit}'."
-      failed: "&cFailed to {operation} inheritance: {reason}"
-    info:
-      usage: "&cUsage: /rank info <name>"
-      header: "&eRank Information for '{rank}':"
-      prefix: "&7Prefix: {prefix}"
-      color: "&7Color: {color}"
-      weight: "&7Weight: {weight}"
-      inherits: "&7Inherits: {inherits}"
-      permissions: "&7Permissions:"
-      permission: "&8- {permission}"
-      inherited_permission: "&8- {permission} &7(from {source})"
-      none: "&7None"
-    list:
-      header: "&eAll Ranks:"
-      entry: "&e{name} &7(Weight: {weight}, Prefix: {prefix})"
-      none: "&cNo ranks found."
+  ban:
+    usage: "&e/ban <player> <reason> [-s] [-c] &7- Ban a player"
+    success: "&aBanned {target} for: {reason}"
+    success_silent: "&aBanned {target} silently for: {reason}"
+    already_banned: "&c{target} is already banned!"
+    broadcast: "&c{target} was banned by {staff} for: {reason}"
+    message: "&cYou have been banned from the server!\n&cReason: {reason}\n&cBanned by: {staff}\n&cExpires: {expiry}"
     
-  permission:
-    header: "&ePermission Commands:"
-    command_list:
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    usage:
-      main: "&e/permission <add|remove|list> <player> [permission] [duration] &7- Manage player permissions"
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      usage: "&cUsage: /permission <player> add <permission> [duration]"
-      success: "&aAdded permission '{permission}' to {target}."
-      temporary: "&aAdded permission '{permission}' to {target} for {duration}."
-      already_has: "&c{target} already has permission '{permission}'."
-      invalid_duration: "&cInvalid duration: {duration}"
-      valid_formats: "&7Valid formats: 1d, 2h, 30m, etc."
-    remove:
-      usage: "&cUsage: /permission <player> remove <permission>"
-      success: "&aRemoved permission '{permission}' from {target}."
-      not_found: "&c{target} does not have permission '{permission}'."
-    list:
-      usage: "&cUsage: /permission <player> list"
-      header: "&e{target}'s Permissions ({total} total, {active} active, {inactive} inactive):"
-      none: "&c{target} has no permissions."
-      entry: "&7- {permission}"
-      granted_by: "&7Granted by: {granter}"
-      added_on: "&7Added on: {date}"
-      expires_on: "&7Expires on: {date}"
-      expired_on: "&7Expired on: {date}"
-      revoked_by: "&7Revoked by: {revoker}"
-      revoked_on: "&7Revoked on: {date}"
-      duration: "&7Duration: {duration}"
-      time_remaining: "&7Time remaining: {duration}"
-      click_to_remove: "&7Click to remove"
-    clear:
-      usage: "&cUsage: /permission <player> clear"
-      success: "&aCleared {count} permissions from {target}."
-      
-  friend:
-    usage:
-      header: "&eUsage: /friend <add|remove|list> [player]"
-      main: "&e/friend &7- Show friend commands"
-      add: "&e/friend add <player> &7- Add a friend"
-      remove: "&e/friend remove <player> &7- Remove a friend"
-      deny: "&e/friend deny <player> &7- Deny a friend request"
-      list: "&e/friend list &7- List your friends"
-      requests: "&e/friend requests &7- View friend requests"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      success: "&aAdded {target} as a friend."
-      already_friends: "&cYou are already friends with {target}."
-      cannot_add_self: "&cYou cannot add yourself as a friend."
-      user_not_found: "&cPlayer '{target}' not found!"
-      request_sent: "&eFriend request sent to {target}."
-      request_already_sent: "&cYou already have a pending friend request with {target}."
-      now_friends: "&aYou are now friends with {target}!"
-    remove:
-      success: "&aRemoved {target} from your friends list."
-      not_friends: "&cYou are not friends with {target}."
-    list:
-      header: "&eYour Friends:"
-      no_friends: "&cYou have no friends."
-      none: "&cYou have no friends."
-      online_format: "&a● &e{username}"
-      offline_format: "&8● &7{username}"
-      online_hover: "Currently on {server}"
-      offline_hover: "Last seen: {lastSeen}"
-      lastseen_unknown: "Unknown"
-    requests:
-      header: "&ePending Friend Requests:"
-      no_requests: "&cYou have no pending friend requests."
-      none: "&cYou have no pending friend requests."
-      incoming_header: "&eIncoming Requests:"
-      outgoing_header: "&eOutgoing Requests:"
-      incoming_format: "&e{username}"
-      outgoing_format: "&7→ {username}"
-      accept_button: "&a[Accept]"
-      deny_button: "&c[Deny]"
-      cancel_button: "&c[Cancel]"
-      accept_hover: "Click to accept"
-      deny_hover: "Click to deny"
-      cancel_hover: "Click to cancel"
-      toggle_info: "&7Use &e/friend requests toggle &7to enable/disable friend requests."
-      toggle_on: "&aFriend requests enabled."
-      toggle_off: "&cFriend requests disabled."
-    deny:
-      success: "&aDenied friend request from {target}."
-      no_request: "&cYou have no pending friend request from {target}."
-      
-  staffchat:
-    header: "&eStaff Chat Commands:"
-    usage:
-      main: "&e/staffchat &7- Toggle staff chat mode"
-      hide: "&e/staffchat hide &7- Toggle staff chat listening"
-      message: "&e/staffchat <message> &7- Send a staff chat message"
-    format: "&6[Staff] {player}: &f{message}"
+  tempban:
+    usage: "&e/tempban <player> <duration> <reason> [-s] [-c] &7- Temporarily ban a player"
+    success: "&aTemporarily banned {target} for {duration}: {reason}"
+    success_silent: "&aTemporarily banned {target} silently for {duration}: {reason}"
+    broadcast: "&c{target} was temporarily banned by {staff} for {duration}: {reason}"
     
-  vanish:
-    header: "&eVanish Commands:"
-    usage:
-      main: "&e/vanish &7- Toggle vanish mode"
-      auto: "&e/vanish auto &7- Toggle auto-vanish on join"
-      list: "&e/vanish list &7- List vanished staff (based on rank)"
-    enabled: "&aVanish enabled."
-    disabled: "&cVanish disabled."
+  ipban:
+    usage: "&e/ipban <player> <reason> [-s] [-c] &7- IP ban a player"
+    success: "&aIP banned {target} for: {reason}"
+    success_silent: "&aIP banned {target} silently for: {reason}"
+    broadcast: "&c{target} was IP banned by {staff} for: {reason}"
     
-  lastseen:
-    header: "&eLastseen Commands:"
-    usage:
-      main: "&e/lastseen <player> &7- Check when a player was last seen"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    online: "&a{target} is currently online."
-    offline: "&e{target} was last seen {time} ago."
-    never_joined: "&c{target} has never joined the server."
-
-  message:
-    header: "&eMessage Commands:"
-    usage:
-      main: "&e/msg <player> <message> &7- Send a private message"
-      reply: "&e/r <message> &7- Reply to the last message"
-    player_not_found: "&cPlayer '{target}' not found!"
-    cannot_message_self: "&cYou cannot send a message to yourself!"
-    no_one_to_reply: "&cYou have no one to reply to!"
-    reply_target_offline: "&cThe player you were messaging is no longer online!"
-    sender_format: "&7[&eYou &7→ &e{target}&7] &f{message}"
-    receiver_format: "&7[&e{sender} &7→ &eYou&7] &f{message}"
-
-# General Messages
-general:
-  no_permission: "&cYou don't have permission to use this command."
-  player_not_found: "&cPlayer '{player}' not found."
-  invalid_duration: "&cInvalid duration format. Example: 1d, 2h, 30m"
-  database_error: "&cA database error occurred. Please try again later."
-
-# Staff Messages
-staff:
-  connected: "&a{player} joined the staff channel."
-  disconnected: "&c{player} left the staff channel."
-  chat_enabled: "&aStaff chat enabled."
-  chat_disabled: "&cStaff chat disabled."
-  listening_enabled: "&aStaff chat listening enabled."
-  listening_disabled: "&cStaff chat listening disabled."
-  auto_vanish_enabled: "&aAuto-vanish enabled for staff."
-  chat_format: "{prefix}{player} &7» {chatColor}{message}"
-  prefix: "&b[SC] "
-  server_switch: "&e{player} switched from {from} to {to}."
-
-# Vanish Messages
-vanish:
-  now_vanished: "&aYou are now vanished."
-  now_visible: "&cYou are no longer vanished."
-  auto_enabled: "&aAuto-vanish enabled for staff."
-  auto_disabled: "&cAuto-vanish disabled for staff."
-  list:
-    header: "&eVanished Staff ({count}):"
-    entry: "&7- &f{player} &8({rank})"
-    none: "&eNo vanished staff members visible to you."
-
-# Chat formatting
-chat:
-  main_format: "{prefix}{player} &7» {chatColor}{message}"
-
-# Tab list formatting
-tab:
-  player_format: "{prefix}{color}{player}"
-  default_format: "&7{player}"
-
-reload:
-    header: "&eReload Commands:"
-    usage:
-      main: "&e/radiumreload &7- Reload plugin configuration"
-    success: "&aRadium configuration reloaded successfully!"
-    error: "&cFailed to reload configuration: {error}"
-  
-  gamemode:
-    header: "&eGamemode Commands:"
-    usage:
-      main: "&e/gamemode <mode> [player] &7- Change gamemode"
-      gmc: "&e/gmc [player] &7- Set gamemode to creative"
-      gms: "&e/gms [player] &7- Set gamemode to survival"
-      gma: "&e/gma [player] &7- Set gamemode to adventure"
-      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
-    success_self: "&aSet your gamemode to {gamemode}."
-    success_other: "&aSet {target}'s gamemode to {gamemode}."
-    invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
-    player_not_found: "&cPlayer '{target}' not found or not online!"
-    no_permission: "&cYou don't have permission to change other players' gamemode!"
-    same_gamemode: "&cYou are already in {gamemode} mode!"
-    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
-    redis_error: "&cFailed to send gamemode change request. Please try again."
-    not_connected: "&cTarget player is not connected to a backend server!"
-      
-  rank:
-    header: "&eRank Commands:"
-    usage:
-      main: "&e/rank &7- Show rank commands"
-      info: "&e/rank info <player> &7- Show a player's current rank"
-      create: "&e/rank create <name> &7- Create a new rank"
-      delete: "&e/rank delete <name> &7- Delete a rank"
-      setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
-      setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
-      setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
-      permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
-      permission_remove: "&e/rank permission remove <name> <permission> &7- Remove permission from rank"
-      inherit: "&e/rank inherit <name> <inherit> &7- Toggle rank inheritance"
-      info: "&e/rank info <name> &7- Get rank information"
-      list: "&e/rank list &7- List all ranks"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    current_rank: "&e{target}'s current rank: {rank}"
-    no_rank: "&c{target} has no active rank."
-    create:
-      usage: "&cUsage: /rank create <name>"
-      success: "&aCreated rank '{rank}' successfully."
-    delete:
-      usage: "&cUsage: /rank delete <name>"
-      success: "&aDeleted rank '{rank}' successfully."
-      not_found: "&cRank '{rank}' not found."
-    setprefix:
-      usage: "&cUsage: /rank setprefix <name> <prefix>"
-      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
-    setcolor:
-      usage: "&cUsage: /rank setcolor <name> <color>"
-      success: "&aSet color for rank '{rank}' to '{color}'."
-      invalid_color: "&cInvalid color '{color}'."
-      valid_colors: "&7Valid colors: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white"
-    setweight:
-      usage: "&cUsage: /rank setweight <name> <weight>"
-      success: "&aSet weight for rank '{rank}' to {weight}."
-    permission:
-      add:
-        usage: "&cUsage: /rank permission add <name> <permission>"
-        success: "&aAdded permission '{permission}' to rank '{rank}'."
-        already_has: "&cRank '{rank}' already has permission '{permission}'."
-      remove:
-        usage: "&cUsage: /rank permission remove <name> <permission>"
-        success: "&aRemoved permission '{permission}' from rank '{rank}'."
-        not_found: "&cRank '{rank}' does not have permission '{permission}'."
-    inherit:
-      usage: "&cUsage: /rank inherit <name> <inherit>"
-      add_success: "&aRank '{rank}' now inherits from '{inherit}'."
-      remove_success: "&aRank '{rank}' no longer inherits from '{inherit}'."
-      failed: "&cFailed to {operation} inheritance: {reason}"
-    info:
-      usage: "&cUsage: /rank info <name>"
-      header: "&eRank Information for '{rank}':"
-      prefix: "&7Prefix: {prefix}"
-      color: "&7Color: {color}"
-      weight: "&7Weight: {weight}"
-      inherits: "&7Inherits: {inherits}"
-      permissions: "&7Permissions:"
-      permission: "&8- {permission}"
-      inherited_permission: "&8- {permission} &7(from {source})"
-      none: "&7None"
-    list:
-      header: "&eAll Ranks:"
-      entry: "&e{name} &7(Weight: {weight}, Prefix: {prefix})"
-      none: "&cNo ranks found."
+  unban:
+    usage: "&e/unban <player> [reason] &7- Unban a player"
+    success: "&aUnbanned {target}"
+    not_banned: "&c{target} is not banned!"
+    broadcast: "&a{target} was unbanned by {staff}"
     
-  permission:
-    header: "&ePermission Commands:"
-    command_list:
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    usage:
-      main: "&e/permission <add|remove|list> <player> [permission] [duration] &7- Manage player permissions"
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      usage: "&cUsage: /permission <player> add <permission> [duration]"
-      success: "&aAdded permission '{permission}' to {target}."
-      temporary: "&aAdded permission '{permission}' to {target} for {duration}."
-      already_has: "&c{target} already has permission '{permission}'."
-      invalid_duration: "&cInvalid duration: {duration}"
-      valid_formats: "&7Valid formats: 1d, 2h, 30m, etc."
-    remove:
-      usage: "&cUsage: /permission <player> remove <permission>"
-      success: "&aRemoved permission '{permission}' from {target}."
-      not_found: "&c{target} does not have permission '{permission}'."
-    list:
-      usage: "&cUsage: /permission <player> list"
-      header: "&e{target}'s Permissions ({total} total, {active} active, {inactive} inactive):"
-      none: "&c{target} has no permissions."
-      entry: "&7- {permission}"
-      granted_by: "&7Granted by: {granter}"
-      added_on: "&7Added on: {date}"
-      expires_on: "&7Expires on: {date}"
-      expired_on: "&7Expired on: {date}"
-      revoked_by: "&7Revoked by: {revoker}"
-      revoked_on: "&7Revoked on: {date}"
-      duration: "&7Duration: {duration}"
-      time_remaining: "&7Time remaining: {duration}"
-      click_to_remove: "&7Click to remove"
-    clear:
-      usage: "&cUsage: /permission <player> clear"
-      success: "&aCleared {count} permissions from {target}."
-      
-  friend:
-    usage:
-      header: "&eUsage: /friend <add|remove|list> [player]"
-      main: "&e/friend &7- Show friend commands"
-      add: "&e/friend add <player> &7- Add a friend"
-      remove: "&e/friend remove <player> &7- Remove a friend"
-      deny: "&e/friend deny <player> &7- Deny a friend request"
-      list: "&e/friend list &7- List your friends"
-      requests: "&e/friend requests &7- View friend requests"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      success: "&aAdded {target} as a friend."
-      already_friends: "&cYou are already friends with {target}."
-      cannot_add_self: "&cYou cannot add yourself as a friend."
-      user_not_found: "&cPlayer '{target}' not found!"
-      request_sent: "&eFriend request sent to {target}."
-      request_already_sent: "&cYou already have a pending friend request with {target}."
-      now_friends: "&aYou are now friends with {target}!"
-    remove:
-      success: "&aRemoved {target} from your friends list."
-      not_friends: "&cYou are not friends with {target}."
-    list:
-      header: "&eYour Friends:"
-      no_friends: "&cYou have no friends."
-      none: "&cYou have no friends."
-      online_format: "&a● &e{username}"
-      offline_format: "&8● &7{username}"
-      online_hover: "Currently on {server}"
-      offline_hover: "Last seen: {lastSeen}"
-      lastseen_unknown: "Unknown"
-    requests:
-      header: "&ePending Friend Requests:"
-      no_requests: "&cYou have no pending friend requests."
-      none: "&cYou have no pending friend requests."
-      incoming_header: "&eIncoming Requests:"
-      outgoing_header: "&eOutgoing Requests:"
-      incoming_format: "&e{username}"
-      outgoing_format: "&7→ {username}"
-      accept_button: "&a[Accept]"
-      deny_button: "&c[Deny]"
-      cancel_button: "&c[Cancel]"
-      accept_hover: "Click to accept"
-      deny_hover: "Click to deny"
-      cancel_hover: "Click to cancel"
-      toggle_info: "&7Use &e/friend requests toggle &7to enable/disable friend requests."
-      toggle_on: "&aFriend requests enabled."
-      toggle_off: "&cFriend requests disabled."
-    deny:
-      success: "&aDenied friend request from {target}."
-      no_request: "&cYou have no pending friend request from {target}."
-      
-  staffchat:
-    header: "&eStaff Chat Commands:"
-    usage:
-      main: "&e/staffchat &7- Toggle staff chat mode"
-      hide: "&e/staffchat hide &7- Toggle staff chat listening"
-      message: "&e/staffchat <message> &7- Send a staff chat message"
-    format: "&6[Staff] {player}: &f{message}"
+  mute:
+    usage: "&e/mute <player> <reason> [-s] &7- Mute a player"
+    success: "&aMuted {target} for: {reason}"
+    success_silent: "&aMuted {target} silently for: {reason}"
+    already_muted: "&c{target} is already muted!"
+    broadcast: "&c{target} was muted by {staff} for: {reason}"
+    message: "&cYou have been muted!\n&cReason: {reason}\n&cMuted by: {staff}\n&cExpires: {expiry}"
     
-  vanish:
-    header: "&eVanish Commands:"
-    usage:
-      main: "&e/vanish &7- Toggle vanish mode"
-      auto: "&e/vanish auto &7- Toggle auto-vanish on join"
-      list: "&e/vanish list &7- List vanished staff (based on rank)"
-    enabled: "&aVanish enabled."
-    disabled: "&cVanish disabled."
+  tempmute:
+    usage: "&e/tempmute <player> <duration> <reason> [-s] &7- Temporarily mute a player"
+    success: "&aTemporarily muted {target} for {duration}: {reason}"
+    success_silent: "&aTemporarily muted {target} silently for {duration}: {reason}"
+    broadcast: "&c{target} was temporarily muted by {staff} for {duration}: {reason}"
     
-  lastseen:
-    header: "&eLastseen Commands:"
-    usage:
-      main: "&e/lastseen <player> &7- Check when a player was last seen"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    online: "&a{target} is currently online."
-    offline: "&e{target} was last seen {time} ago."
-    never_joined: "&c{target} has never joined the server."
-
-  message:
-    header: "&eMessage Commands:"
-    usage:
-      main: "&e/msg <player> <message> &7- Send a private message"
-      reply: "&e/r <message> &7- Reply to the last message"
-    player_not_found: "&cPlayer '{target}' not found!"
-    cannot_message_self: "&cYou cannot send a message to yourself!"
-    no_one_to_reply: "&cYou have no one to reply to!"
-    reply_target_offline: "&cThe player you were messaging is no longer online!"
-    sender_format: "&7[&eYou &7→ &e{target}&7] &f{message}"
-    receiver_format: "&7[&e{sender} &7→ &eYou&7] &f{message}"
-
-# General Messages
-general:
-  no_permission: "&cYou don't have permission to use this command."
-  player_not_found: "&cPlayer '{player}' not found."
-  invalid_duration: "&cInvalid duration format. Example: 1d, 2h, 30m"
-  database_error: "&cA database error occurred. Please try again later."
-
-# Staff Messages
-staff:
-  connected: "&a{player} joined the staff channel."
-  disconnected: "&c{player} left the staff channel."
-  chat_enabled: "&aStaff chat enabled."
-  chat_disabled: "&cStaff chat disabled."
-  listening_enabled: "&aStaff chat listening enabled."
-  listening_disabled: "&cStaff chat listening disabled."
-  auto_vanish_enabled: "&aAuto-vanish enabled for staff."
-  chat_format: "{prefix}{player} &7» {chatColor}{message}"
-  prefix: "&b[SC] "
-  server_switch: "&e{player} switched from {from} to {to}."
-
-# Vanish Messages
-vanish:
-  now_vanished: "&aYou are now vanished."
-  now_visible: "&cYou are no longer vanished."
-  auto_enabled: "&aAuto-vanish enabled for staff."
-  auto_disabled: "&cAuto-vanish disabled for staff."
-  list:
-    header: "&eVanished Staff ({count}):"
-    entry: "&7- &f{player} &8({rank})"
-    none: "&eNo vanished staff members visible to you."
-
-# Chat formatting
-chat:
-  main_format: "{prefix}{player} &7» {chatColor}{message}"
-
-# Tab list formatting
-tab:
-  player_format: "{prefix}{color}{player}"
-  default_format: "&7{player}"
-
-reload:
-    header: "&eReload Commands:"
-    usage:
-      main: "&e/radiumreload &7- Reload plugin configuration"
-    success: "&aRadium configuration reloaded successfully!"
-    error: "&cFailed to reload configuration: {error}"
-  
-  gamemode:
-    header: "&eGamemode Commands:"
-    usage:
-      main: "&e/gamemode <mode> [player] &7- Change gamemode"
-      gmc: "&e/gmc [player] &7- Set gamemode to creative"
-      gms: "&e/gms [player] &7- Set gamemode to survival"
-      gma: "&e/gma [player] &7- Set gamemode to adventure"
-      gmsp: "&e/gmsp [player] &7- Set gamemode to spectator"
-    success_self: "&aSet your gamemode to {gamemode}."
-    success_other: "&aSet {target}'s gamemode to {gamemode}."
-    invalid_gamemode: "&cInvalid gamemode '{gamemode}'. Valid modes: survival, creative, adventure, spectator"
-    player_not_found: "&cPlayer '{target}' not found or not online!"
-    no_permission: "&cYou don't have permission to change other players' gamemode!"
-    same_gamemode: "&cYou are already in {gamemode} mode!"
-    target_same_gamemode: "&c{target} is already in {gamemode} mode!"
-    redis_error: "&cFailed to send gamemode change request. Please try again."
-    not_connected: "&cTarget player is not connected to a backend server!"
-      
-  rank:
-    header: "&eRank Commands:"
-    usage:
-      main: "&e/rank &7- Show rank commands"
-      info: "&e/rank info <player> &7- Show a player's current rank"
-      create: "&e/rank create <name> &7- Create a new rank"
-      delete: "&e/rank delete <name> &7- Delete a rank"
-      setprefix: "&e/rank setprefix <name> <prefix> &7- Set rank prefix"
-      setcolor: "&e/rank setcolor <name> <color> &7- Set rank color"
-      setweight: "&e/rank setweight <name> <weight> &7- Set rank weight"
-      permission_add: "&e/rank permission add <name> <permission> &7- Add permission to rank"
-      permission_remove: "&e/rank permission remove <name> <permission> &7- Remove permission from rank"
-      inherit: "&e/rank inherit <name> <inherit> &7- Toggle rank inheritance"
-      info: "&e/rank info <name> &7- Get rank information"
-      list: "&e/rank list &7- List all ranks"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    current_rank: "&e{target}'s current rank: {rank}"
-    no_rank: "&c{target} has no active rank."
-    create:
-      usage: "&cUsage: /rank create <name>"
-      success: "&aCreated rank '{rank}' successfully."
-    delete:
-      usage: "&cUsage: /rank delete <name>"
-      success: "&aDeleted rank '{rank}' successfully."
-      not_found: "&cRank '{rank}' not found."
-    setprefix:
-      usage: "&cUsage: /rank setprefix <name> <prefix>"
-      success: "&aSet prefix for rank '{rank}' to '{prefix}'."
-    setcolor:
-      usage: "&cUsage: /rank setcolor <name> <color>"
-      success: "&aSet color for rank '{rank}' to '{color}'."
-      invalid_color: "&cInvalid color '{color}'."
-      valid_colors: "&7Valid colors: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green, aqua, red, light_purple, yellow, white"
-    setweight:
-      usage: "&cUsage: /rank setweight <name> <weight>"
-      success: "&aSet weight for rank '{rank}' to {weight}."
-    permission:
-      add:
-        usage: "&cUsage: /rank permission add <name> <permission>"
-        success: "&aAdded permission '{permission}' to rank '{rank}'."
-        already_has: "&cRank '{rank}' already has permission '{permission}'."
-      remove:
-        usage: "&cUsage: /rank permission remove <name> <permission>"
-        success: "&aRemoved permission '{permission}' from rank '{rank}'."
-        not_found: "&cRank '{rank}' does not have permission '{permission}'."
-    inherit:
-      usage: "&cUsage: /rank inherit <name> <inherit>"
-      add_success: "&aRank '{rank}' now inherits from '{inherit}'."
-      remove_success: "&aRank '{rank}' no longer inherits from '{inherit}'."
-      failed: "&cFailed to {operation} inheritance: {reason}"
-    info:
-      usage: "&cUsage: /rank info <name>"
-      header: "&eRank Information for '{rank}':"
-      prefix: "&7Prefix: {prefix}"
-      color: "&7Color: {color}"
-      weight: "&7Weight: {weight}"
-      inherits: "&7Inherits: {inherits}"
-      permissions: "&7Permissions:"
-      permission: "&8- {permission}"
-      inherited_permission: "&8- {permission} &7(from {source})"
-      none: "&7None"
-    list:
-      header: "&eAll Ranks:"
-      entry: "&e{name} &7(Weight: {weight}, Prefix: {prefix})"
-      none: "&cNo ranks found."
+  unmute:
+    usage: "&e/unmute <player> [reason] &7- Unmute a player"
+    success: "&aUnmuted {target}"
+    not_muted: "&c{target} is not muted!"
+    broadcast: "&a{target} was unmuted by {staff}"
     
-  permission:
-    header: "&ePermission Commands:"
-    command_list:
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    usage:
-      main: "&e/permission <add|remove|list> <player> [permission] [duration] &7- Manage player permissions"
-      add: "&e/permission <player> add <permission> [duration] &7- Add permission to player"
-      remove: "&e/permission <player> remove <permission> &7- Remove permission from player"
-      list: "&e/permission <player> list &7- List player's permissions"
-      clear: "&e/permission <player> clear &7- Clear all player's permissions"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      usage: "&cUsage: /permission <player> add <permission> [duration]"
-      success: "&aAdded permission '{permission}' to {target}."
-      temporary: "&aAdded permission '{permission}' to {target} for {duration}."
-      already_has: "&c{target} already has permission '{permission}'."
-      invalid_duration: "&cInvalid duration: {duration}"
-      valid_formats: "&7Valid formats: 1d, 2h, 30m, etc."
-    remove:
-      usage: "&cUsage: /permission <player> remove <permission>"
-      success: "&aRemoved permission '{permission}' from {target}."
-      not_found: "&c{target} does not have permission '{permission}'."
-    list:
-      usage: "&cUsage: /permission <player> list"
-      header: "&e{target}'s Permissions ({total} total, {active} active, {inactive} inactive):"
-      none: "&c{target} has no permissions."
-      entry: "&7- {permission}"
-      granted_by: "&7Granted by: {granter}"
-      added_on: "&7Added on: {date}"
-      expires_on: "&7Expires on: {date}"
-      expired_on: "&7Expired on: {date}"
-      revoked_by: "&7Revoked by: {revoker}"
-      revoked_on: "&7Revoked on: {date}"
-      duration: "&7Duration: {duration}"
-      time_remaining: "&7Time remaining: {duration}"
-      click_to_remove: "&7Click to remove"
-    clear:
-      usage: "&cUsage: /permission <player> clear"
-      success: "&aCleared {count} permissions from {target}."
-      
-  friend:
-    usage:
-      header: "&eUsage: /friend <add|remove|list> [player]"
-      main: "&e/friend &7- Show friend commands"
-      add: "&e/friend add <player> &7- Add a friend"
-      remove: "&e/friend remove <player> &7- Remove a friend"
-      deny: "&e/friend deny <player> &7- Deny a friend request"
-      list: "&e/friend list &7- List your friends"
-      requests: "&e/friend requests &7- View friend requests"
-    profile_not_found: "&cProfile for '{target}' not found!"
-    add:
-      success: "&aAdded {target} as a friend."
-      already_friends: "&cYou are already friends with {target}."
-      cannot_add_self: "&cYou cannot add yourself as a friend."
-      user_not_found: "&cPlayer '{target}' not found!"
-      request_sent: "&eFriend request sent to {target}."
-      request_already_sent: "&cYou already have a pending friend request with {target}."
-      now_friends: "&aYou are now friends with {target}!"
-    remove:
-      success: "&aRemoved {target} from your friends list."
-      not_friends: "&cYou are not friends with {target}."
-    list:
-      header: "&eYour Friends:"
-      no_friends: "&cYou have no friends."
-      none: "&cYou have no friends."
-      online_format: "&a● &e{username}"
-      offline_format: "&8● &7{username}"
-      online_hover: "Currently on {server}"
-      offline_hover: "Last seen: {lastSeen}"
-      lastseen_unknown: "Unknown"
-    requests:
-      header: "&ePending Friend Requests:"
-      no_requests: "&cYou have no pending friend requests."
-      none: "&cYou have no pending friend requests."
-      incoming_header: "&eIncoming Requests:"
-      outgoing_header: "&eOutgoing Requests:"
-      incoming_format: "&e{username}"
-      outgoing_format: "&7→ {username}"
-      accept_button: "&a[Accept]"
-      deny_button: "&c[Deny]"
-      cancel_button: "&c[Cancel]"
-      accept_hover: "Click to accept"
-      deny_hover: "Click to deny"
-      cancel_hover: "Click to cancel"
-      toggle_info: "&7Use &e/friend requests toggle &7to enable/disable friend requests."
-      toggle_on: "&aFriend requests enabled."
-      toggle_off: "&cFriend requests disabled."
-    deny:
-      success: "&aDenied friend request from {target}."
-      no_request: "&cYou have no pending friend request from {target}."
-      
-  staffchat:
-    header: "&eStaff Chat Commands:"
-    usage:
-      main: "&e/staffchat &7- Toggle staff chat mode"
-      hide: "&e/staffchat hide &7- Toggle staff chat listening"
-      message: "&e/staffchat <message> &7- Send a staff chat message"
-    format: "&6[Staff] {player
+  warn:
+    usage: "&e/warn <player> <reason> [-s] &7- Warn a player"
+    success: "&aWarned {target} for: {reason}"
+    success_silent: "&aWarned {target} silently for: {reason}"
+    broadcast: "&c{target} was warned by {staff} for: {reason}"
+    message: "&eYou have been warned!\n&eReason: {reason}\n&eWarned by: {staff}"
+    escalated: "&c{target} has been automatically banned due to too many warnings!"
+    
+  kick:
+    usage: "&e/kick <player> <reason> [-s] &7- Kick a player"
+    success: "&aKicked {target} for: {reason}"
+    success_silent: "&aKicked {target} silently for: {reason}"
+    broadcast: "&c{target} was kicked by {staff} for: {reason}"
+    message: "&cYou have been kicked from the server!\n&cReason: {reason}\n&cKicked by: {staff}"
+    
+  blacklist:
+    usage: "&e/blacklist <player> <reason> [-s] [-c] &7- Blacklist a player"
+    success: "&aBlacklisted {target} for: {reason}"
+    success_silent: "&aBlacklisted {target} silently for: {reason}"
+    already_blacklisted: "&c{target} is already blacklisted!"
+    broadcast: "&c{target} was blacklisted by {staff} for: {reason}"
+    
+  unblacklist:
+    usage: "&e/unblacklist <player> [reason] &7- Remove a player from blacklist"
+    success: "&aRemoved {target} from blacklist"
+    not_blacklisted: "&c{target} is not blacklisted!"
+    broadcast: "&a{target} was removed from blacklist by {staff}"

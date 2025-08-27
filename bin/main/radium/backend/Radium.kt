@@ -178,6 +178,7 @@ class Radium @Inject constructor(
         lamp.register(Kick(this))
         lamp.register(Blacklist(this))
         lamp.register(CheckPunishments(this))
+        logger.info(Component.text("Punishment commands registered", NamedTextColor.GREEN))
 
         // Accept brigadier visitor
         lamp.accept(brigadier(server))

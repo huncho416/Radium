@@ -2,6 +2,7 @@ package radium.backend.nametag
 
 import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.connection.DisconnectEvent
+import com.velocitypowered.api.event.connection.PostLoginEvent
 import com.velocitypowered.api.event.player.ServerPostConnectEvent
 import com.velocitypowered.api.proxy.Player
 import io.lettuce.core.pubsub.RedisPubSubListener
@@ -34,23 +35,42 @@ class NameTagListeners(
     }
     
     /**
+     * Handles player login to proxy (happens before server connection)
+     */
+    @Subscribe
+    fun onPostLogin(event: PostLoginEvent) {
+        val player = event.player
+        
+        // Apply nametag with visibility rules immediately when player logs into proxy
+        radium.scope.launch {
+            nameTagService.applyForWithVisibility(player)
+        }
+        
+        radium.logger.info("Applied nametag for ${player.username} on proxy login")
+    }
+    
+    /**
      * Handles player connection to backend servers
      */
     @Subscribe
     fun onServerConnect(event: ServerPostConnectEvent) {
         val player = event.player
         
-        // Apply nametag when player connects to a backend server
+        // Re-apply nametag with visibility rules when player connects to a backend server
         radium.scope.launch {
-            nameTagService.applyFor(player)
+            nameTagService.applyForWithVisibility(player)
         }
         
         // Update all other players' nametags visibility for this new player
         radium.server.allPlayers
             .filter { it.uniqueId != player.uniqueId }
             .forEach { otherPlayer ->
-                nameTagService.updateFor(otherPlayer, "new_player_connected")
+                radium.scope.launch {
+                    nameTagService.applyForWithVisibility(otherPlayer)
+                }
             }
+            
+        radium.logger.info("Applied nametag for ${player.username} on server connect")
     }
     
     /**
@@ -69,6 +89,23 @@ class NameTagListeners(
             }
     }
     
+    /**
+     * Handles player initial login to proxy
+     */
+    @Subscribe
+    fun onPlayerLogin(event: PostLoginEvent) {
+        val player = event.player
+        
+        radium.logger.debug("Player ${player.username} logged into proxy")
+        
+        // Apply nametag immediately when player logs in
+        radium.scope.launch {
+            // Small delay to ensure profile is loaded
+            kotlinx.coroutines.delay(500)
+            nameTagService.applyFor(player)
+        }
+    }
+
     /**
      * Subscribes to Redis channels for real-time updates
      */
@@ -169,17 +206,23 @@ class NameTagListeners(
             val playerUuid = data["uuid"]?.let { UUID.fromString(it.toString()) } ?: return
             val isVanished = data["vanished"] as? Boolean ?: false
             
-            // Update the vanished player's nametag
+            // Update the vanished player's nametag with visibility rules
             radium.server.getPlayer(playerUuid).ifPresent { player ->
-                nameTagService.updateFor(player, "vanish_changed")
+                radium.scope.launch {
+                    nameTagService.applyForWithVisibility(player)
+                }
             }
             
-            // Update all other players' visibility (they might now see/not see the vanished player)
+            // Update all other players' nametags with visibility rules (their view of the vanished player may have changed)
             radium.server.allPlayers
                 .filter { it.uniqueId != playerUuid }
                 .forEach { otherPlayer ->
-                    nameTagService.updateFor(otherPlayer, "vanish_visibility_change")
+                    radium.scope.launch {
+                        nameTagService.applyForWithVisibility(otherPlayer)
+                    }
                 }
+            
+            radium.logger.info("Updated nametag visibility for vanish change: ${data["uuid"]} (vanished: $isVanished)")
             
         } catch (e: Exception) {
             radium.logger.debug("Failed to parse vanish update message: ${e.message}")

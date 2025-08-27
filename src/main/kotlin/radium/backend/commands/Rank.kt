@@ -29,6 +29,9 @@ class Rank(private val radium: Radium) {
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.main"))
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.delete"))
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setprefix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setsuffix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.settabprefix"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.settabsuffix"))
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setcolor"))
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.setweight"))
         actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.usage.permission_add"))
@@ -394,6 +397,12 @@ class Rank(private val radium: Radium) {
                     .appendNewline()
                     .append(radium.yamlFactory.getMessageComponent("commands.rank.info.prefix", "prefix" to rank.prefix))
                     .appendNewline()
+                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.suffix", "suffix" to (rank.suffix ?: "None")))
+                    .appendNewline()
+                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.tabprefix", "tabprefix" to (rank.tabPrefix ?: "Uses regular prefix")))
+                    .appendNewline()
+                    .append(radium.yamlFactory.getMessageComponent("commands.rank.info.tabsuffix", "tabsuffix" to (rank.tabSuffix ?: "None")))
+                    .appendNewline()
                     .append(radium.yamlFactory.getMessageComponent("commands.rank.info.color", "color" to rank.color))
                     .appendNewline()
                     .append(radium.yamlFactory.getMessageComponent("commands.rank.info.weight", "weight" to rank.weight.toString()))
@@ -465,6 +474,128 @@ class Rank(private val radium: Radium) {
         } catch (e: Exception) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
                 "operation" to "list ranks",
+                "message" to e.message.toString()
+            ))
+        }
+    }
+
+    @Subcommand("settabprefix")
+    @CommandPermission("radium.rank.settabprefix")
+    suspend fun setTabPrefix(
+        actor: Player,
+        @Optional @RankList name: String?,
+        @Optional prefix: String?
+    ){
+        try {
+            if (name.isNullOrEmpty()) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabprefix.usage"))
+                return
+            }
+
+            val success = rankManager.updateRank(name) { rank ->
+                rank.copy(tabPrefix = prefix)
+            }
+
+            if (success) {
+                val displayPrefix = prefix ?: "null (will use regular prefix)"
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabprefix.success",
+                    "rank" to name,
+                    "prefix" to displayPrefix
+                ))
+                
+                // Update tab lists for all players with this rank
+                GlobalScope.launch {
+                    radium.tabListManager.updateAllPlayersTabList()
+                }
+            } else {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
+            }
+        } catch (e: Exception) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set tab prefix",
+                "message" to e.message.toString()
+            ))
+        }
+    }
+
+    @Subcommand("settabsuffix")
+    @CommandPermission("radium.rank.settabsuffix")
+    suspend fun setTabSuffix(
+        actor: Player,
+        @Optional @RankList name: String?,
+        @Optional suffix: String?
+    ){
+        try {
+            if (name.isNullOrEmpty()) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabsuffix.usage"))
+                return
+            }
+
+            val success = rankManager.updateRank(name) { rank ->
+                rank.copy(tabSuffix = suffix)
+            }
+
+            if (success) {
+                val displaySuffix = suffix ?: "null (no suffix)"
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabsuffix.success",
+                    "rank" to name,
+                    "suffix" to displaySuffix
+                ))
+                
+                // Update tab lists for all players with this rank
+                GlobalScope.launch {
+                    radium.tabListManager.updateAllPlayersTabList()
+                }
+            } else {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
+            }
+        } catch (e: Exception) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set tab suffix",
+                "message" to e.message.toString()
+            ))
+        }
+    }
+
+    @Subcommand("setsuffix")
+    @CommandPermission("radium.rank.setsuffix")
+    suspend fun setSuffix(
+        actor: Player,
+        @Optional @RankList name: String?,
+        @Optional suffix: String?
+    ){
+        try {
+            if (name.isNullOrEmpty()) {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setsuffix.usage"))
+                return
+            }
+
+            val success = rankManager.updateRank(name) { rank ->
+                rank.copy(suffix = suffix)
+            }
+
+            if (success) {
+                val displaySuffix = suffix ?: "null (no suffix)"
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setsuffix.success",
+                    "rank" to name,
+                    "suffix" to displaySuffix
+                ))
+                
+                // Update nametags for all players with this rank (trigger via Redis)
+                // Note: This is handled by the NameTagService which listens to rank updates
+                GlobalScope.launch {
+                    try {
+                        radium.nameTagBootstrap.updateAllNametags()
+                    } catch (e: Exception) {
+                        // NameTagBootstrap not initialized, skip nametag update
+                    }
+                }
+            } else {
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
+            }
+        } catch (e: Exception) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
+                "operation" to "set suffix",
                 "message" to e.message.toString()
             ))
         }

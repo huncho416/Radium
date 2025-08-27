@@ -4,6 +4,7 @@ import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.player.PlayerChatEvent
 import com.velocitypowered.api.event.player.ServerPostConnectEvent
 import com.velocitypowered.api.proxy.Player
+import com.velocitypowered.api.proxy.player.TabListEntry
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import kotlinx.coroutines.launch
@@ -117,6 +118,10 @@ class StaffManager(private val radium: Radium) {
     /**
      * Vanishes a player, making them invisible to other players.
      * Returns true if the player was successfully vanished, false if they were already vanished.
+     * 
+     * NOTE: This implementation handles tab list visibility through proxy mechanisms.
+     * Actual in-game player visibility (hiding the player model/entity) is handled by 
+     * the backend server's vanish plugin via the spoofed vanish command.
      */
     suspend fun vanish(player: Player): Boolean {
         if (vanishedStaff.containsKey(player.username)) {
@@ -136,21 +141,17 @@ class StaffManager(private val radium: Radium) {
             }
         }
         
-        // Get the player's profile to check their rank weight
-        val vanishedProfile = radium.connectionHandler.getPlayerProfile(player.uniqueId)
-        val vanishedWeight = vanishedProfile?.getHighestRank(radium.rankManager)?.weight ?: 0
-        
-        // Hide the vanished player from tab list for players who shouldn't see them
-        radium.server.allPlayers.forEach { onlinePlayer ->
-            if (onlinePlayer.uniqueId != player.uniqueId) {
-                val shouldHide = shouldHideFromPlayer(onlinePlayer, vanishedWeight)
-                if (shouldHide) {
-                    onlinePlayer.tabList.removeEntry(player.uniqueId)
-                }
-            }
+        // Update tab lists for all players to reflect the vanish status
+        // Actual player visibility (seeing the player in-game) is handled by the backend server vanish command
+        radium.scope.launch {
+            radium.tabListManager.updateAllPlayersTabList()
+            radium.logger.debug("Refreshed all tab lists after ${player.username} vanished")
         }
         
-        // Player is now vanished - the API can be used to check vanish status if needed
+        // Publish vanish event to Redis for nametag system
+        publishVanishEvent(player, true)
+        
+        radium.logger.debug("${player.username} vanished from ${radium.server.allPlayers.count { !canSeeVanishedPlayerEnhanced(it, player) }} players")
         
         return true
     }
@@ -165,6 +166,7 @@ class StaffManager(private val radium: Radium) {
         }
 
         vanishedStaff.remove(player.username)
+        radium.logger.debug("${player.username} removed from vanish list")
         
         // Send unvanish command to backend server for actual player visibility
         val currentServer = player.currentServer.orElse(null)
@@ -177,36 +179,27 @@ class StaffManager(private val radium: Radium) {
             }
         }
         
-        // Show the player to all online players again by removing and re-adding them to tab list
-        radium.server.allPlayers.forEach { onlinePlayer ->
-            if (onlinePlayer.uniqueId != player.uniqueId) {
-                // Remove and re-add to ensure visibility
-                onlinePlayer.tabList.removeEntry(player.uniqueId)
-                // The tab list entry will be automatically re-added by Velocity
-            }
+        // Show the player to all online players again by refreshing all tab lists
+        // This handles re-adding players who were removed from tab lists during vanish
+        radium.scope.launch {
+            radium.logger.debug("Starting tab list refresh for unvanished player: ${player.username}")
+            
+            // First update this specific player's tab entry to remove vanish indicator
+            radium.tabListManager.updatePlayerTabList(player)
+            
+            // Then update all players' tab lists to ensure the unvanished player appears for everyone
+            radium.tabListManager.updateAllPlayersTabList()
+            
+            radium.logger.debug("Completed tab list refresh for unvanished player: ${player.username}")
         }
+        
+        // Publish unvanish event to Redis for nametag system
+        publishVanishEvent(player, false)
         
         // Player is now unvanished - the API can be used to check vanish status if needed
+        radium.logger.debug("${player.username} successfully unvanished")
 
         return true
-    }
-
-    /**
-     * Determines if a vanished player should be hidden from another player
-     * based on rank weight and permissions
-     */
-    private suspend fun shouldHideFromPlayer(viewer: Player, vanishedPlayerWeight: Int): Boolean {
-        // Check if the viewer has the override permission to see all vanished players
-        if (viewer.hasPermission("radium.vanish.see")) {
-            return false
-        }
-        
-        // Get the viewer's profile and rank weight
-        val viewerProfile = radium.connectionHandler.getPlayerProfile(viewer.uniqueId)
-        val viewerWeight = viewerProfile?.getHighestRank(radium.rankManager)?.weight ?: 0
-        
-        // Hide if the viewer's rank weight is lower than the vanished player's weight
-        return viewerWeight < vanishedPlayerWeight
     }
 
     /**
@@ -263,7 +256,8 @@ class StaffManager(private val radium: Radium) {
             // COMPLETELY DISABLED: Chat event modification for Minecraft 1.19.1+ compatibility
             // Any modification to PlayerChatEvent.result causes "illegal protocol state" errors
             // Staff chat messages will appear in both staff chat and public chat until a better solution is found
-            radium.logger.warn("Staff chat detected but chat suppression disabled for 1.19.1+ compatibility")
+            // Remove this warning message as it's not critical
+            // radium.logger.debug("Staff chat detected but chat suppression disabled for 1.19.1+ compatibility")
             
             /* DISABLED: All chat event modification causes disconnects in 1.19.1+
             try {
@@ -448,5 +442,87 @@ class StaffManager(private val radium: Radium) {
         }
         
         return visibleVanished
+    }
+
+    /**
+     * Publishes vanish event to Redis for nametag system
+     */
+    private fun publishVanishEvent(player: Player, isVanished: Boolean) {
+        try {
+            val message = mapOf(
+                "uuid" to player.uniqueId.toString(),
+                "username" to player.username,
+                "vanished" to isVanished.toString(),
+                "timestamp" to System.currentTimeMillis().toString()
+            ).entries.joinToString(",") { "${it.key}=${it.value}" }
+            
+            radium.lettuceCache.sync().publish("radium:player:vanish", message)
+            radium.logger.debug("Published vanish event for ${player.username}: vanished=$isVanished")
+            
+        } catch (e: Exception) {
+            radium.logger.error("Failed to publish vanish event for ${player.username}: ${e.message}")
+        }
+    }
+
+    /**
+     * Synchronous version of canSeeVanishedPlayer for tab list updates
+     * Uses a conservative approach since we can't access async rank data
+     * For proper rank-weight comparison, use canSeeVanishedPlayerEnhanced
+     */
+    fun canSeeVanishedPlayerSync(viewer: Player, vanishedPlayer: Player): Boolean {
+        // If the viewer has the special permission to see all vanished players
+        if (viewer.hasPermission("radium.vanish.see")) {
+            return true
+        }
+        
+        // If they're the same player, they can always see themselves
+        if (viewer.uniqueId == vanishedPlayer.uniqueId) {
+            return true
+        }
+        
+        // Conservative approach: Only staff can see vanished players
+        // For proper rank-weight comparison, the async methods should be used
+        return isStaffOnline(viewer)
+    }
+
+    /**
+     * Enhanced async version that uses proper rank-weight comparison
+     * This should be used when you need accurate rank-based visibility logic
+     */
+    suspend fun canSeeVanishedPlayerEnhanced(viewer: Player, vanishedPlayer: Player): Boolean {
+        // If the viewer has the special permission to see all vanished players
+        if (viewer.hasPermission("radium.vanish.see")) {
+            return true
+        }
+        
+        // If they're the same player, they can always see themselves
+        if (viewer.uniqueId == vanishedPlayer.uniqueId) {
+            return true
+        }
+        
+        try {
+            // Get both players' profiles to compare rank weights
+            val viewerProfile = radium.connectionHandler.findPlayerProfile(viewer.uniqueId.toString())
+            val vanishedProfile = radium.connectionHandler.findPlayerProfile(vanishedPlayer.uniqueId.toString())
+            
+            // If either profile is not found, default to staff-only visibility
+            if (viewerProfile == null || vanishedProfile == null) {
+                return isStaffOnline(viewer) && isStaffOnline(vanishedPlayer)
+            }
+            
+            // Get the highest rank for both players
+            val viewerHighestRank = viewerProfile.getHighestRank(radium.rankManager)
+            val vanishedHighestRank = vanishedProfile.getHighestRank(radium.rankManager)
+            
+            val viewerWeight = viewerHighestRank?.weight ?: 0
+            val vanishedWeight = vanishedHighestRank?.weight ?: 0
+            
+            // Viewer can see vanished player if their rank weight is higher or equal
+            return viewerWeight >= vanishedWeight
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to check enhanced vanish visibility for ${viewer.username} -> ${vanishedPlayer.username}: ${e.message}")
+            // Fallback to simplified logic
+            return canSeeVanishedPlayerSync(viewer, vanishedPlayer)
+        }
     }
 }

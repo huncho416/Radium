@@ -222,6 +222,72 @@ class NametagCommands(private val radium: Radium) {
         }
     }
     
+    @Subcommand("test")
+    @Description("Test nametag application for a player")
+    suspend fun test(sender: CommandSource, @Optional targetPlayer: String?) {
+        // Check permission
+        if (!sender.hasPermission("radium.nametag.test")) {
+            sender.sendMessage(
+                Component.text("You don't have permission to use this command.", NamedTextColor.RED)
+            )
+            return
+        }
+        
+        val player = if (targetPlayer != null) {
+            radium.server.getPlayer(targetPlayer).orElse(null)
+        } else if (sender is Player) {
+            sender
+        } else {
+            null
+        }
+        
+        if (player == null) {
+            sender.sendMessage(
+                Component.text("❌ Player not found or not specified.", NamedTextColor.RED)
+            )
+            return
+        }
+        
+        try {
+            // Get player profile info
+            val profile = radium.connectionHandler.getPlayerProfile(player.uniqueId)
+            val profileInfo = if (profile != null) {
+                val rank = profile.getHighestRank(radium.rankManager)
+                "Profile found - Rank: ${rank?.name ?: "None"}"
+            } else {
+                "No profile found"
+            }
+            
+            // Test nametag application
+            val nametagService = radium.nameTagBootstrap.let {
+                // Access the nametag service through reflection or make it public
+                // For now, use the API
+                NametagAPI.refresh(player.uniqueId)
+                "Applied via API"
+            }
+            
+            sender.sendMessage(Component.text()
+                .append(Component.text("🏷️ Nametag Test Results:", NamedTextColor.AQUA))
+                .append(Component.newline())
+                .append(Component.text("Player: ", NamedTextColor.GRAY))
+                .append(Component.text("${player.username} (${player.uniqueId})", NamedTextColor.WHITE))
+                .append(Component.newline())
+                .append(Component.text("Profile: ", NamedTextColor.GRAY))
+                .append(Component.text(profileInfo, NamedTextColor.YELLOW))
+                .append(Component.newline())
+                .append(Component.text("Action: ", NamedTextColor.GRAY))
+                .append(Component.text(nametagService, NamedTextColor.GREEN))
+                .build()
+            )
+            
+        } catch (e: Exception) {
+            sender.sendMessage(
+                Component.text("❌ Failed to test nametag: ${e.message}", NamedTextColor.RED)
+            )
+            radium.logger.error("Failed to test nametag for ${player.username}", e)
+        }
+    }
+
     /**
      * Gets the name of the command sender
      */

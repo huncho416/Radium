@@ -107,4 +107,13 @@ class NameTagBootstrap(private val radium: Radium) {
     fun getService(): NameTagService? {
         return if (::nameTagService.isInitialized) nameTagService else null
     }
+    
+    /**
+     * Updates nametags for all online players
+     */
+    suspend fun updateAllNametags() {
+        if (::nameTagService.isInitialized) {
+            nameTagService.updateAllPlayersNametags()
+        }
+    }
 }

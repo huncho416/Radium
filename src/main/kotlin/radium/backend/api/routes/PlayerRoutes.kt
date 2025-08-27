@@ -159,5 +159,78 @@ fun Route.playerRoutes(plugin: Radium, server: ProxyServer, logger: ComponentLog
                     VanishResponse(playerName, vanishRequest.vanished, false))
             }
         }
+
+        // Get player vanish status by UUID
+        get("/uuid/{uuid}/vanish") {
+            val uuidString = call.parameters["uuid"] ?: return@get call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse("Missing uuid parameter")
+            )
+
+            val uuid = try {
+                java.util.UUID.fromString(uuidString)
+            } catch (e: IllegalArgumentException) {
+                return@get call.respond(HttpStatusCode.BadRequest, 
+                    ErrorResponse("Invalid UUID format"))
+            }
+
+            val player = server.getPlayer(uuid).orElse(null)
+            if (player == null) {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Player not found"))
+                return@get
+            }
+
+            val isVanished = plugin.staffManager.isVanished(player)
+            call.respond(mapOf("vanished" to isVanished))
+        }
+
+        // Check if viewer can see vanished player (UUID version)
+        get("/uuid/{viewerUuid}/can-see-vanished/{vanishedUuid}") {
+            val viewerUuidString = call.parameters["viewerUuid"] ?: return@get call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse("Missing viewerUuid parameter")
+            )
+            
+            val vanishedUuidString = call.parameters["vanishedUuid"] ?: return@get call.respond(
+                HttpStatusCode.BadRequest,
+                ErrorResponse("Missing vanishedUuid parameter")
+            )
+
+            val viewerUuid = try {
+                java.util.UUID.fromString(viewerUuidString)
+            } catch (e: IllegalArgumentException) {
+                return@get call.respond(HttpStatusCode.BadRequest, 
+                    ErrorResponse("Invalid viewer UUID format"))
+            }
+            
+            val vanishedUuid = try {
+                java.util.UUID.fromString(vanishedUuidString)
+            } catch (e: IllegalArgumentException) {
+                return@get call.respond(HttpStatusCode.BadRequest, 
+                    ErrorResponse("Invalid vanished UUID format"))
+            }
+
+            val viewer = server.getPlayer(viewerUuid).orElse(null)
+            val vanishedPlayer = server.getPlayer(vanishedUuid).orElse(null)
+            
+            if (viewer == null) {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Viewer not found"))
+                return@get
+            }
+            
+            if (vanishedPlayer == null) {
+                call.respond(HttpStatusCode.NotFound, ErrorResponse("Vanished player not found"))
+                return@get
+            }
+
+            try {
+                val canSee = plugin.staffManager.canSeeVanishedPlayerEnhanced(viewer, vanishedPlayer)
+                call.respond(mapOf("canSee" to canSee))
+            } catch (e: Exception) {
+                logger.error("Failed to check vanish visibility for ${viewerUuid} -> ${vanishedUuid}: ${e.message}", e)
+                call.respond(HttpStatusCode.InternalServerError,
+                    ErrorResponse("Failed to check vanish visibility", e.message))
+            }
+        }
     }
 }

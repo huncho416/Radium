@@ -21,6 +21,12 @@ class Ban(private val radium: Radium) {
         @Flag("s") silent: Boolean = false,
         @Flag("c") clearInventory: Boolean = false
     ) {
+        // Check for both old and new permission formats for lobby compatibility
+        if (!actor.hasPermission("radium.punish.ban") && !actor.hasPermission("radium.command.ban")) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_permission"))
+            return
+        }
+        
         if (target.isEmpty() || reason.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.ban.usage"))
             return
@@ -73,9 +79,7 @@ class Ban(private val radium: Radium) {
                     clearInventory = clearInventory
                 )
 
-                if (!success) {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.error_occurred"))
-                }
+                // Success and error messages are handled by PunishmentManager
             } catch (e: Exception) {
                 radium.logger.error("Error executing ban command: ${e.message}", e)
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.error_occurred"))
@@ -136,9 +140,7 @@ class Ban(private val radium: Radium) {
                     clearInventory = clearInventory
                 )
 
-                if (!success) {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.error_occurred"))
-                }
+                // Success and error messages are handled by PunishmentManager
             } catch (e: Exception) {
                 radium.logger.error("Error executing ipban command: ${e.message}", e)
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.error_occurred"))
@@ -154,6 +156,12 @@ class Ban(private val radium: Radium) {
         reason: String,
         @Flag("s") silent: Boolean = false
     ) {
+        // Check for both old and new permission formats for lobby compatibility
+        if (!actor.hasPermission("radium.punish.unban") && !actor.hasPermission("radium.command.unban")) {
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_permission"))
+            return
+        }
+        
         if (target.isEmpty() || reason.isEmpty()) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.unban.usage"))
             return
@@ -182,9 +190,7 @@ class Ban(private val radium: Radium) {
                     silent = silent
                 )
 
-                if (!success) {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.no_active_punishment"))
-                }
+                // Success and error messages are handled by PunishmentManager
             } catch (e: Exception) {
                 radium.logger.error("Error executing unban command: ${e.message}", e)
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("punishments.error_occurred"))

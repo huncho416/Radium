@@ -101,11 +101,13 @@ class PunishmentListener(private val radium: Radium) {
                         return@runBlocking
                     }
 
-                    // Player is allowed to join
-                    radium.logger.info(
-                        Component.text("Player ${player.username} logged in successfully")
-                            .color(NamedTextColor.GREEN)
-                    )
+                    // Only log for staff members
+                    if (player.hasPermission("radium.staff")) {
+                        radium.logger.info(
+                            Component.text("Staff member ${player.username} logged in")
+                                .color(NamedTextColor.GREEN)
+                        )
+                    }
                 }
 
             } catch (e: Exception) {

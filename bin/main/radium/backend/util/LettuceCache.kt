@@ -220,7 +220,10 @@ class LettuceCache(val logger: ComponentLogger) {
             sync().expire(radiumKey, expireSeconds)
             sync().expire(mythicKey, expireSeconds)
 
-            logger.info(Component.text("Cached profile for ${profile.username} (${profile.uuid}) in Redis under both key formats with TTL of ${expireSeconds}s", NamedTextColor.GREEN))
+            // Reduce cache logging spam - only log for staff
+            if (profile.hasPermission("radium.staff")) {
+                logger.debug(Component.text("Cached staff profile for ${profile.username} in Redis with TTL of ${expireSeconds}s", NamedTextColor.GREEN))
+            }
         } catch (e: Exception) {
             logger.error(Component.text("Failed to cache profile in Redis: ${e.message}", NamedTextColor.RED), e)
         }

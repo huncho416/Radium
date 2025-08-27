@@ -1,0 +1,93 @@
+# Radium Ranks Configuration
+# This file allows you to configure rank properties including tab-specific formatting
+
+# Example rank configuration:
+# RANK_NAME:
+#   prefix: "&4[ADMIN] &c"        # Regular prefix used in chat
+#   tabPrefix: "&4[A] &c"         # Prefix shown only in tab list (optional, falls back to prefix if not set)
+#   tabSuffix: " &7[Staff]"       # Suffix shown only in tab list (optional)
+#   color: "&c"                   # Player name color
+#   weight: 100                   # Rank weight (higher = more permissions)
+#   nametagTemplate: "<red><b>ADMIN</b></red> <white><username>"  # Custom nametag template (optional)
+#   permissions:
+#     - "permission.example"
+#   inherits:
+#     - "PARENT_RANK"
+
+# Rank definitions
+ranks:
+  OWNER:
+    prefix: "&4[OWNER] &c"
+    tabPrefix: "&4[O] &c"
+    tabSuffix: ""
+    color: "&c"
+    weight: 1000
+    nametagTemplate: "<#ff355e><b>OWNER</b></#ff355e> <white><username>"
+    permissions:
+      - "radium.*"
+    inherits: []
+
+  ADMIN:
+    prefix: "&c[ADMIN] &c"
+    tabPrefix: "&c[A] &c"
+    tabSuffix: ""
+    color: "&c"
+    weight: 900
+    nametagTemplate: "<red><b>ADMIN</b></red> <white><username>"
+    permissions:
+      - "radium.admin.*"
+    inherits: []
+
+  MOD:
+    prefix: "&9[MOD] &9"
+    tabPrefix: "&9[M] &9"
+    tabSuffix: ""
+    color: "&9"
+    weight: 800
+    nametagTemplate: "<blue><b>MOD</b></blue> <white><username>"
+    permissions:
+      - "radium.mod.*"
+    inherits: []
+
+  HELPER:
+    prefix: "&a[HELPER] &a"
+    tabPrefix: "&a[H] &a"
+    tabSuffix: ""
+    color: "&a"
+    weight: 700
+    nametagTemplate: "<green><b>HELPER</b></green> <white><username>"
+    permissions:
+      - "radium.helper.*"
+    inherits: []
+
+  VIP:
+    prefix: "&6[VIP] &6"
+    tabPrefix: "&6[VIP] &6"
+    tabSuffix: " &7★"
+    color: "&6"
+    weight: 100
+    nametagTemplate: "<gold><b>VIP</b></gold> <white><username>"
+    permissions:
+      - "radium.vip.*"
+    inherits: []
+
+  DEFAULT:
+    prefix: ""
+    tabPrefix: ""
+    tabSuffix: ""
+    color: "&7"
+    weight: 0
+    nametagTemplate: "<gray><username></gray>"
+    permissions: []
+    inherits: []
+
+# Settings
+settings:
+  # Whether to automatically apply rank changes from this file on startup/reload
+  auto_apply_on_reload: true
+  
+  # Whether to create missing ranks from this file
+  create_missing_ranks: true
+  
+  # Whether to update existing ranks with values from this file
+  update_existing_ranks: false

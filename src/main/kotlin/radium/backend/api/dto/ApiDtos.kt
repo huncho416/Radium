@@ -128,3 +128,52 @@ data class VanishResponse(
     val vanished: Boolean,
     val success: Boolean
 )
+
+// Punishment-related DTOs
+data class PunishmentRequest(
+    val target: String,
+    val type: String, // BAN, MUTE, WARN, KICK, etc.
+    val reason: String,
+    val staffId: String, // UUID or username of staff issuing punishment
+    val duration: String? = null, // e.g., "1d", "2h", "30m"
+    val silent: Boolean = false,
+    val clearInventory: Boolean = false
+)
+
+data class PunishmentRevokeRequest(
+    val target: String,
+    val type: String, // BAN, MUTE, etc.
+    val reason: String,
+    val staffId: String, // UUID or username of staff revoking punishment
+    val silent: Boolean = false
+)
+
+data class PunishmentResponse(
+    val success: Boolean,
+    val target: String,
+    val type: String,
+    val reason: String,
+    val staff: String,
+    val message: String? = null
+)
+
+data class PunishmentInfo(
+    val id: String,
+    val type: String,
+    val reason: String,
+    val issuedBy: String,
+    val issuedAt: Long,
+    val expiresAt: Long? = null,
+    val active: Boolean,
+    val revokedBy: String? = null,
+    val revokedAt: Long? = null,
+    val revokeReason: String? = null
+)
+
+data class PunishmentHistoryResponse(
+    val target: String,
+    val targetId: String,
+    val totalPunishments: Int,
+    val activePunishments: Int,
+    val punishments: List<PunishmentInfo>
+)
