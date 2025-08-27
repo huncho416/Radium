@@ -38,7 +38,9 @@ import radium.backend.commands.Revoke
 import radium.backend.commands.LastSeen
 import radium.backend.commands.StaffChat
 import radium.backend.commands.Vanish
-import radium.backend.commands.ChatAdmin
+import radium.backend.commands.ChatSlow
+import radium.backend.commands.ChatMute
+import radium.backend.commands.ChatClear
 import radium.backend.player.ConnectionHandler
 import radium.backend.player.RankManager
 import radium.backend.player.ChatManager
@@ -168,7 +170,9 @@ class Radium @Inject constructor(
         lamp.register(Vanish(this))
         lamp.register(Friend(this))
         lamp.register(Gamemode(this))
-        lamp.register(ChatAdmin(this))
+        lamp.register(ChatSlow(this))
+        lamp.register(ChatMute(this))
+        lamp.register(ChatClear(this))
 
         // Register punishment commands
         lamp.register(Ban(this))
