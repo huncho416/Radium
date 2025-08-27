@@ -555,3 +555,35 @@ admin:
 
 # Rate Limiting
 rate_limit: "&cYou are issuing punishments too quickly. Please wait a moment."
+
+# Chat Management Commands
+commands:
+  chat:
+    header: "&eChat Administration Commands:"
+    usage:
+      slow: "&e/chat slow <delay> &7- Slow chat for specified delay (1s, 5s, 10s, etc)"
+      mute: "&e/chat mute &7- Mute chat server-wide"
+      unmute: "&e/chat unmute &7- Unmute chat server-wide"
+      clear: "&e/chat clear &7- Clear chat server-wide"
+    slow:
+      invalid_delay: "&cInvalid delay format. Use: 1s, 5s, 10s, etc."
+      invalid_number: "&cDelay must be greater than 0 seconds."
+      too_long: "&cDelay cannot be longer than 5 minutes (300s)."
+      success: "&aChat slowed to {delay} seconds."
+      broadcast: "&cChat has been slowed to {delay} seconds."
+    mute:
+      already_muted: "&cChat is already muted."
+      success: "&aChat has been muted."
+      broadcast: "&cChat has been muted by staff."
+    unmute:
+      not_muted: "&cChat is not muted."
+      success: "&aChat has been unmuted."
+      broadcast: "&aChat has been unmuted."
+    clear:
+      success: "&aChat has been cleared."
+      broadcast: "&aChat has been cleared by staff."
+
+# Chat restriction messages
+chat:
+  muted: "&cChat is currently muted."
+  slow: "&cYou must wait {time} more seconds before chatting."

@@ -139,6 +139,12 @@ class ConnectionHandler(private val radium: Radium) {
         } else {
             radium.logger.info("No profile found for disconnecting player $username ($uuid)")
         }
+
+        // Clean up chat management data
+        radium.chatManager.removePlayerChatData(uuid)
+
+        // Remove from staff if they were staff
+        radium.staffManager.removeStaff(player)
     }
 
     /**
