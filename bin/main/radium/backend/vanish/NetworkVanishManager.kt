@@ -144,11 +144,11 @@ class NetworkVanishManager(private val radium: Radium) {
                 
                 // Get player profile for rank-based formatting
                 val profile = radium.connectionHandler.findPlayerProfile(vanishedPlayer.uniqueId.toString())
-                val highestRank = profile?.getHighestRank(radium.rankManager)
+                val effectiveRank = profile?.getEffectiveRank(radium.rankManager)
                 
                 // Build display name with vanish indicator and rank prefix
                 val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
-                val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
+                val rankPrefix = effectiveRank?.tabPrefix ?: effectiveRank?.prefix ?: ""
                 
                 val displayName = Component.text()
                     .append(vanishIndicator)
@@ -222,12 +222,12 @@ class NetworkVanishManager(private val radium: Radium) {
                     if (vanishData == null || VanishLevel.canSeeVanished(newPlayer, vanishData.level, radium)) {
                         val existingEntry = newPlayerTabList.getEntry(existingPlayer.uniqueId)
                         if (existingEntry.isPresent) {
-                            val displayName = if (vanishData != null && VanishLevel.canSeeVanished(newPlayer, vanishData.level, radium)) {
+                            val displayName =                            if (vanishData != null && VanishLevel.canSeeVanished(newPlayer, vanishData.level, radium)) {
                                 // Show with vanish indicator for staff
                                 val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
                                 val profile = radium.connectionHandler.findPlayerProfile(existingPlayer.uniqueId.toString())
-                                val highestRank = profile?.getHighestRank(radium.rankManager)
-                                val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
+                                val effectiveRank = profile?.getEffectiveRank(radium.rankManager)
+                                val rankPrefix = effectiveRank?.tabPrefix ?: effectiveRank?.prefix ?: ""
                                 
                                 Component.text()
                                     .append(vanishIndicator)
@@ -237,9 +237,9 @@ class NetworkVanishManager(private val radium: Radium) {
                             } else {
                                 // Show normally with rank formatting
                                 val profile = radium.connectionHandler.findPlayerProfile(existingPlayer.uniqueId.toString())
-                                val highestRank = profile?.getHighestRank(radium.rankManager)
-                                val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
-                                val rankSuffix = highestRank?.tabSuffix ?: highestRank?.suffix ?: ""
+                                val effectiveRank = profile?.getEffectiveRank(radium.rankManager)
+                                val rankPrefix = effectiveRank?.tabPrefix ?: effectiveRank?.prefix ?: ""
+                                val rankSuffix = effectiveRank?.tabSuffix ?: effectiveRank?.suffix ?: ""
                                 
                                 Component.text()
                                     .append(Component.text(rankPrefix))

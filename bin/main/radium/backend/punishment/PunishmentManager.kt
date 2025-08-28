@@ -596,4 +596,39 @@ class PunishmentManager(
             queueRunning = queueStats?.isRunning ?: false
         )
     }
+
+    /**
+     * Enhanced player profile lookup that handles both UUID and username inputs
+     */
+    private suspend fun findPlayerProfile(identifier: String): radium.backend.player.Profile? {
+        return try {
+            // Try UUID first
+            val uuid = UUID.fromString(identifier)
+            radium.connectionHandler.findPlayerProfile(uuid.toString())
+        } catch (e: IllegalArgumentException) {
+            // Try username
+            radium.connectionHandler.findPlayerProfile(identifier)
+        }
+    }
+    
+    /**
+     * Enhanced player lookup for punishment commands that logs attempts
+     */
+    suspend fun lookupPlayerForPunishment(identifier: String): Pair<radium.backend.player.Profile?, String> {
+        try {
+            logger.debug(Component.text("Looking up player: $identifier", NamedTextColor.YELLOW))
+            
+            val profile = findPlayerProfile(identifier)
+            if (profile != null) {
+                logger.debug(Component.text("Found player profile: ${profile.username} (${profile.uuid})", NamedTextColor.GREEN))
+                return Pair(profile, profile.username)
+            } else {
+                logger.warn(Component.text("Player profile not found for: $identifier", NamedTextColor.RED))
+                return Pair(null, identifier)
+            }
+        } catch (e: Exception) {
+            logger.error(Component.text("Error looking up player $identifier: ${e.message}", NamedTextColor.RED))
+            return Pair(null, identifier)
+        }
+    }
 }

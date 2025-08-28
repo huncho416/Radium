@@ -19,8 +19,8 @@ enum class VanishLevel(val minWeight: Int, val displayName: String) {
         suspend fun fromRankWeight(player: com.velocitypowered.api.proxy.Player, radium: Radium): VanishLevel {
             return try {
                 val profile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
-                val highestRank = profile?.getHighestRank(radium.rankManager)
-                val weight = highestRank?.weight ?: 0
+                val effectiveRank = profile?.getEffectiveRank(radium.rankManager)
+                val weight = effectiveRank?.weight ?: 0
                 
                 when {
                     weight >= OWNER.minWeight -> OWNER
@@ -58,8 +58,8 @@ enum class VanishLevel(val minWeight: Int, val displayName: String) {
                 }
                 
                 val viewerProfile = radium.connectionHandler.findPlayerProfile(viewer.uniqueId.toString())
-                val viewerHighestRank = viewerProfile?.getHighestRank(radium.rankManager)
-                val viewerWeight = viewerHighestRank?.weight ?: 0
+                val viewerEffectiveRank = viewerProfile?.getEffectiveRank(radium.rankManager)
+                val viewerWeight = viewerEffectiveRank?.weight ?: 0
                 
                 // Viewer can see vanished player if their rank weight meets the vanish level requirement
                 viewerWeight >= vanishedLevel.minWeight

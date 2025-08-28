@@ -164,17 +164,24 @@ fun Route.punishmentRoutes(plugin: Radium, server: ProxyServer, logger: Componen
             }
             
             try {
-                // Look up target player info
-                val profile = plugin.connectionHandler.findPlayerProfile(target)
+                logger.debug("API: Looking up punishments for player: $target")
+                
+                // Use enhanced player lookup from PunishmentManager
+                val (profile, targetName) = plugin.punishmentManager.lookupPlayerForPunishment(target)
                 if (profile == null) {
+                    logger.warn("API: Player not found: $target")
                     call.respond(HttpStatusCode.NotFound,
                         ErrorResponse("Player not found", "Player $target not found"))
                     return@get
                 }
                 
-                // Get punishments
-                val punishments = plugin.punishmentRepository.getPunishmentHistory(profile.uuid.toString())
+                logger.debug("API: Found player profile: ${profile.username} (${profile.uuid})")
+                
+                // Get punishments using PunishmentManager
+                val punishments = plugin.punishmentManager.getPunishmentHistory(profile.uuid.toString())
                 val activePunishments = punishments.filter { it.isCurrentlyActive() }
+                
+                logger.debug("API: Found ${punishments.size} total punishments, ${activePunishments.size} active for ${profile.username}")
                 
                 call.respond(PunishmentHistoryResponse(
                     target = profile.username,
@@ -198,7 +205,7 @@ fun Route.punishmentRoutes(plugin: Radium, server: ProxyServer, logger: Componen
                 ))
                 
             } catch (e: Exception) {
-                logger.error("Failed to get punishments via API: ${e.message}", e)
+                logger.error("Failed to get punishments via API for target '$target': ${e.message}", e)
                 call.respond(HttpStatusCode.InternalServerError,
                     ErrorResponse("Internal server error", e.message ?: "Unknown error"))
             }

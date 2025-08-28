@@ -1,6 +1,60 @@
 # Lobby Integration Requirements - Critical Updates Needed
 
-## 🔧 **RADIUM FIXES COMPLETED (2025-08-27) - UPDATED**
+## 🔧 **ADDITIONAL RADIUM FIXES COMPLETED (2025-08-27) - ENHANCED PLAYER SUPPORT**
+
+### ✅ **Fixed Default Player Rank Support**
+**Problem**: Default players (no assigned ranks) were getting null rank data causing improper tab formatting
+**Status**: ✅ **FIXED WITH EFFECTIVE RANK SYSTEM**
+
+**Changes Made:**
+
+1. **Added `getEffectiveRank()` method to Profile.kt**:
+   - Returns player's highest rank OR falls back to a default rank
+   - Ensures all players have proper rank data for tab formatting
+   - Prevents null rank issues that caused improper formatting
+
+2. **Added `getDefaultRank()` private method**:
+   - Creates a default rank with weight 0, gray color (&7), no prefix/suffix
+   - Used as fallback for players with no assigned ranks
+   - Ensures consistent formatting behavior
+
+3. **Updated VanishLevel.kt to use effective ranks**:
+   - Changed `fromRankWeight()` to use `getEffectiveRank()` instead of `getHighestRank()`
+   - Changed `canSeeVanished()` to use `getEffectiveRank()` for proper weight comparison
+   - Ensures all vanish logic has proper rank weight data
+
+4. **Updated NetworkVanishManager.kt to use effective ranks**:
+   - Updated tab formatting methods to use `getEffectiveRank()`
+   - Ensures tab list entries always have proper rank formatting
+   - Fixes issue where default players had no prefix/suffix
+
+### ✅ **Enhanced Punishment API Reliability**
+**Problem**: Lobby server getting 404 errors when fetching player punishment data
+**Status**: ✅ **FIXED WITH ROBUST PLAYER LOOKUP**
+
+**Changes Made:**
+
+1. **Added enhanced player lookup to PunishmentManager.kt**:
+   - Added `findPlayerProfile()` method that handles both UUID and username inputs
+   - Added `lookupPlayerForPunishment()` method with detailed logging
+   - Provides better error handling and debugging for player lookup failures
+
+2. **Fixed PunishmentRoutes.kt API endpoint**:
+   - Updated GET `/punishments/{target}` route to use enhanced lookup
+   - Added comprehensive logging for debugging API calls
+   - Uses PunishmentManager methods instead of direct repository access
+   - Provides better error messages for troubleshooting
+
+3. **Enhanced error handling and logging**:
+   - Added debug logging to track API calls and player lookups
+   - Better error messages for failed player lookups
+   - Improved exception handling in punishment API endpoints
+
+**Key Improvements:**
+- Default players now get proper gray formatting instead of no formatting or owner formatting
+- Punishment API endpoints are more reliable with better UUID/username handling
+- Enhanced logging helps debug integration issues between Radium and Lobby
+- All rank weight comparisons now work correctly for players with no assigned ranks
 
 ### ✅ **Fixed Vanish Logic and Tab List Management**
 **Problem**: Inconsistent vanish visibility logic between rank weight and permission systems
@@ -51,7 +105,7 @@
 - `Reload.kt` - Uses `reload.*` keys (these exist under `reload:` section at top level)
 
 ### ✅ **Fixed Build Issues - COMPLETE**
-**Result**: Project builds successfully with all vanish logic and message key improvements
+**Result**: Project builds successfully with all vanish logic, default player support, and API improvements
 
 ---
 

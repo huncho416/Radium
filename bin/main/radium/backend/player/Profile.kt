@@ -1047,6 +1047,30 @@ class Profile {
     }
 
     /**
+     * Gets the effective rank for this player, falling back to default rank if none assigned
+     */
+    suspend fun getEffectiveRank(rankManager: RankManager): RankManager.Rank {
+        return getHighestRank(rankManager) ?: getDefaultRank(rankManager)
+    }
+    
+    /**
+     * Gets the default rank for players with no assigned ranks
+     */
+    private suspend fun getDefaultRank(rankManager: RankManager): RankManager.Rank {
+        return rankManager.getRank("Default") ?: RankManager.Rank(
+            name = "Default",
+            prefix = "&7",
+            weight = 0,
+            color = "&7",
+            permissions = setOf(),
+            inherits = listOf(),
+            suffix = "",
+            tabPrefix = "",
+            tabSuffix = ""
+        )
+    }
+
+    /**
      * Fast permission check using the effective permissions cache.
      * Make sure to call updateEffectivePermissions() first to ensure the cache is up to date.
      *
