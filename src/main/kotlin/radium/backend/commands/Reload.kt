@@ -21,9 +21,9 @@ class Reload(private val radium: Radium) {
                 radium.tabListManager.updateAllPlayersTabList()
             }
             
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.reload.success"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("reload.success"))
         } catch (e: Exception) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.reload.error", "error" to e.message.toString()))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("reload.error", "error" to e.message.toString()))
         }
     }
 }

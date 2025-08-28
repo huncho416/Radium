@@ -25,14 +25,14 @@ class Revoke(private val radium: Radium) {
         // Validate rank exists
         val rankObj = radium.rankManager.getRank(rank)
         if (rankObj == null) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.delete.not_found", "rank" to rank))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.not_found", "rank" to rank))
             return
         }
 
         // Get the player's profile from cache or database
         val profile = radium.connectionHandler.findPlayerProfile(target)
         if (profile == null) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.revoke.profile_not_found", "target" to target))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("revoke.profile_not_found", "target" to target))
             return
         }
 
@@ -46,14 +46,14 @@ class Revoke(private val radium: Radium) {
         if (removed) {
             radium.logger.info("Successfully revoked rank '$rank' from ${profile.username}")
             
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.revoke.success", 
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("revoke.success", 
                 "rank" to rank, 
                 "target" to target
             ))
 
             // If there was a reason provided, show it
             if (reason != null && reason.isNotEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.revoke.reason", "reason" to reason))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("revoke.reason", "reason" to reason))
             }
 
             // Sync the profile immediately to Redis
@@ -84,7 +84,7 @@ class Revoke(private val radium: Radium) {
             }
             radium.logger.info(logMessage)
         } else {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.revoke.not_found", 
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("revoke.not_found", 
                 "target" to target, 
                 "rank" to rank
             ))

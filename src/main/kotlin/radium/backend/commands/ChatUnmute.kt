@@ -14,7 +14,7 @@ class ChatUnmute(private val radium: Radium) {
     @Command("chatunmute")
     fun unmuteChat(actor: Player) {
         if (!radium.chatManager.isChatMuted()) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.unmute.not_muted"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.unmute.not_muted"))
             return
         }
         
@@ -22,10 +22,10 @@ class ChatUnmute(private val radium: Radium) {
         radium.chatManager.setChatMuted(false)
         
         // Notify staff member
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.unmute.success"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.unmute.success"))
         
         // Broadcast to all players
-        val broadcastMessage = radium.yamlFactory.getMessageComponent("commands.chat.unmute.broadcast")
+        val broadcastMessage = radium.yamlFactory.getMessageComponent("chat.unmute.broadcast")
             
         radium.server.allPlayers.forEach { player ->
             player.sendMessage(broadcastMessage)

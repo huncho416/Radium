@@ -16,17 +16,27 @@ class ChatSlow(private val radium: Radium) {
         // Parse delay (1s, 5s, 10s, etc.)
         val delaySeconds = parseDelay(delay)
         if (delaySeconds == null) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.slow.invalid_delay"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.slow.invalid_duration"))
             return
         }
         
         if (delaySeconds <= 0) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.slow.invalid_number"))
+            // Disable slow mode
+            radium.chatManager.setChatSlowDelay(0)
+            
+            // Notify staff member
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.slow.disabled"))
+            
+            // Broadcast to all players
+            val broadcastMessage = radium.yamlFactory.getMessageComponent("chat.slow.broadcast_disabled")
+            radium.server.allPlayers.forEach { player ->
+                player.sendMessage(broadcastMessage)
+            }
             return
         }
         
         if (delaySeconds > 300) { // Max 5 minutes
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.slow.too_long"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.slow.invalid_duration"))
             return
         }
         
@@ -34,10 +44,10 @@ class ChatSlow(private val radium: Radium) {
         radium.chatManager.setChatSlowDelay(delaySeconds)
         
         // Notify staff member
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.slow.success", "delay" to delaySeconds.toString()))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.slow.success", "delay" to delaySeconds.toString()))
         
         // Broadcast to all players (except those with bypass permission)
-        val broadcastMessage = radium.yamlFactory.getMessageComponent("commands.chat.slow.broadcast", "delay" to delaySeconds.toString())
+        val broadcastMessage = radium.yamlFactory.getMessageComponent("chat.slow.broadcast_enabled", "delay" to delaySeconds.toString())
             
         radium.server.allPlayers.forEach { player ->
             if (!player.hasPermission("radium.chat.bypass")) {

@@ -14,7 +14,7 @@ class ChatClear(private val radium: Radium) {
     @Command("chatclear", "chat clear")
     fun clearChat(actor: Player) {
         // Notify staff member
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.clear.success"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.clear.success"))
         
         // Clear chat for all players (except those with bypass permission)
         val clearLines = (1..100).map { Component.text("") }
@@ -28,7 +28,7 @@ class ChatClear(private val radium: Radium) {
         }
         
         // Send notification to all players (including staff)
-        val broadcastMessage = radium.yamlFactory.getMessageComponent("commands.chat.clear.broadcast")
+        val broadcastMessage = radium.yamlFactory.getMessageComponent("chat.clear.broadcast")
             
         radium.server.allPlayers.forEach { player ->
             player.sendMessage(broadcastMessage)

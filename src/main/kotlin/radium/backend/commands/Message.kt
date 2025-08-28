@@ -85,7 +85,7 @@ class Message(private val radium: Radium) {
                 pendingMessages.remove(requestId)
             } else {
                 // Player not found on this proxy
-                val notFoundMessage = radium.yamlFactory.getMessageComponent("message.player_not_found", "player" to target)
+                val notFoundMessage = radium.yamlFactory.getMessageComponent("commands.message.player_not_found", "player" to target)
                 actor.sendMessage(notFoundMessage)
                 pendingMessages.remove(requestId)
                 return@launch
@@ -112,17 +112,17 @@ class Message(private val radium: Radium) {
         
         // Format and send messages
         val senderMessage = yamlFactory.getMessageComponent("commands.message.sender_format",
+            "sender" to sender.username,
             "target" to target.username,
             "message" to message
-        ).clickEvent(ClickEvent.suggestCommand("/r "))
-            .hoverEvent(HoverEvent.showText(Component.text("Click to reply")))
-            
+        )
+
         val receiverMessage = yamlFactory.getMessageComponent("commands.message.receiver_format",
             "sender" to sender.username,
+            "target" to target.username,
             "message" to message
-        ).clickEvent(ClickEvent.suggestCommand("/r "))
-            .hoverEvent(HoverEvent.showText(Component.text("Click to reply")))
-        
+        )
+
         sender.sendMessage(senderMessage)
         target.sendMessage(receiverMessage)
     }

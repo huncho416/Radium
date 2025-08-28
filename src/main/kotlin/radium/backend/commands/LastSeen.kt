@@ -60,12 +60,13 @@ class LastSeen(private val radium: Radium) {
         val timeDiff = Duration.between(lastSeen, now)
 
         // Format the time in the same "time ago" format as friend list
-        val formattedTime = formatTimeSince(lastSeen)
+        val timeAgo = formatTimeSince(lastSeen)
 
         // Send the message
         actor.sendMessage(yamlFactory.getMessageComponent("commands.lastseen.offline", 
             "target" to profile.username,
-            "time" to formattedTime))
+            "time" to timeAgo
+        ))
     }
 
     /**

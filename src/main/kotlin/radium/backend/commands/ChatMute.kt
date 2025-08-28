@@ -14,7 +14,7 @@ class ChatMute(private val radium: Radium) {
     @Command("chatmute", "chat mute")
     fun muteChat(actor: Player) {
         if (radium.chatManager.isChatMuted()) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.mute.already_muted"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.mute.already_muted"))
             return
         }
         
@@ -22,10 +22,10 @@ class ChatMute(private val radium: Radium) {
         radium.chatManager.setChatMuted(true)
         
         // Notify staff member
-        actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.chat.mute.success"))
+        actor.sendMessage(radium.yamlFactory.getMessageComponent("chat.mute.success"))
         
         // Broadcast to all players (except those with bypass permission)
-        val broadcastMessage = radium.yamlFactory.getMessageComponent("commands.chat.mute.broadcast")
+        val broadcastMessage = radium.yamlFactory.getMessageComponent("chat.mute.broadcast")
             
         radium.server.allPlayers.forEach { player ->
             if (!player.hasPermission("radium.chat.bypass")) {

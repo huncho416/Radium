@@ -49,13 +49,13 @@ class Rank(private val radium: Radium) {
     ) {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.create.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.create.usage"))
                 return
             }
 
             // Create rank with default values
             val rank = rankManager.createRank(name, "&7", 0)
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.create.success", "rank" to rank.name))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.create.success", "rank" to rank.name))
         } catch (e: Exception) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
                 "operation" to "create rank",
@@ -72,15 +72,15 @@ class Rank(private val radium: Radium) {
     ) {
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.delete.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.usage"))
                 return
             }
 
             val success = rankManager.deleteRank(name)
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.delete.success", "rank" to name))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.success", "rank" to name))
             } else {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.delete.not_found", "rank" to name))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.delete.not_found", "rank" to name))
             }
         } catch (e: Exception) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
@@ -99,7 +99,7 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty() || prefix.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setprefix.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setprefix.usage"))
                 return
             }
 
@@ -108,7 +108,7 @@ class Rank(private val radium: Radium) {
             }
 
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setprefix.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setprefix.success",
                     "rank" to name,
                     "prefix" to prefix
                 ))
@@ -132,7 +132,7 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty() || color.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setcolor.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.usage"))
                 return
             }
 
@@ -147,9 +147,9 @@ class Rank(private val radium: Radium) {
             val colorName = color.lowercase()
             
             if (!validColors.contains(normalizedColor) && !validColors.contains(colorName)) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setcolor.invalid_color", 
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.invalid_color", 
                     "color" to color))
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setcolor.valid_colors"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.valid_colors"))
                 return
             }
 
@@ -177,7 +177,7 @@ class Rank(private val radium: Radium) {
             val success = rankManager.setRankColor(name, finalColor)
 
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setcolor.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setcolor.success",
                     "rank" to name,
                     "color" to finalColor
                 ))
@@ -206,7 +206,7 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setweight.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setweight.usage"))
                 return
             }
 
@@ -215,7 +215,7 @@ class Rank(private val radium: Radium) {
             }
 
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setweight.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setweight.success",
                     "rank" to name,
                     "weight" to weight.toString()
                 ))
@@ -239,13 +239,13 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty() || permission.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.permission.add.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.permission.add.usage"))
                 return
             }
 
             val success = rankManager.addPermissionToRank(name, permission)
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.permission.add.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.permission.add.success",
                     "permission" to permission,
                     "rank" to name
                 ))
@@ -269,19 +269,19 @@ class Rank(private val radium: Radium) {
     ) {
 
         if (name.isNullOrEmpty() || permission.isNullOrEmpty()) {
-            actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.permission.remove.usage"))
+            actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.permission.remove.usage"))
             return
         }
 
         try {
             val success = rankManager.removePermissionFromRank(name, permission)
             if (success) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.permission.remove.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.permission.remove.success",
                     "permission" to permission,
                     "rank" to name
                 ))
             } else {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.permission.remove.not_found"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.permission.remove.not_found"))
             }
         } catch (e: Exception) {
             actor.sendMessage(radium.yamlFactory.getMessageComponent("general.failed_operation",
@@ -300,7 +300,7 @@ class Rank(private val radium: Radium) {
     ) {
         try {
             if (name.isNullOrEmpty() || inherit.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.inherit.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.inherit.usage"))
                 return
             }
 
@@ -318,12 +318,12 @@ class Rank(private val radium: Radium) {
                 // Already inherits, so remove it
                 val removed = rankManager.removeInheritedRank(name, inherit)
                 if (removed) {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.inherit.remove_success",
+                    actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.inherit.remove_success",
                         "rank" to name,
                         "inherit" to inherit
                     ))
                 } else {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.inherit.failed",
+                    actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.inherit.failed",
                         "operation" to "remove",
                         "reason" to "Rank not found or no inheritance relationship exists."
                     ))
@@ -333,12 +333,12 @@ class Rank(private val radium: Radium) {
                 // Doesn't inherit yet, so add it
                 val added = rankManager.addInheritedRank(name, inherit)
                 if (added) {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.inherit.add_success",
+                    actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.inherit.add_success",
                         "rank" to name,
                         "inherit" to inherit
                     ))
                 } else {
-                    actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.inherit.failed",
+                    actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.inherit.failed",
                         "operation" to "add",
                         "reason" to "One of the ranks was not found."
                     ))
@@ -453,16 +453,16 @@ class Rank(private val radium: Radium) {
         try {
             val ranks = rankManager.listRanksByWeight()
             if (ranks.isEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.list.none"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.list.none"))
                 return
             }
 
             val component = Component.text()
-                .append(radium.yamlFactory.getMessageComponent("commands.rank.list.header"))
+                .append(radium.yamlFactory.getMessageComponent("rank.list.header"))
                 .appendNewline()
 
             ranks.forEach { rank ->
-                component.append(radium.yamlFactory.getMessageComponent("commands.rank.list.entry",
+                component.append(radium.yamlFactory.getMessageComponent("rank.list.entry",
                     "name" to rank.name,
                     "weight" to rank.weight.toString(),
                     "prefix" to rank.prefix
@@ -488,7 +488,7 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabprefix.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabprefix.usage"))
                 return
             }
 
@@ -498,7 +498,7 @@ class Rank(private val radium: Radium) {
 
             if (success) {
                 val displayPrefix = prefix ?: "null (will use regular prefix)"
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabprefix.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabprefix.success",
                     "rank" to name,
                     "prefix" to displayPrefix
                 ))
@@ -527,7 +527,7 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabsuffix.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabsuffix.usage"))
                 return
             }
 
@@ -537,7 +537,7 @@ class Rank(private val radium: Radium) {
 
             if (success) {
                 val displaySuffix = suffix ?: "null (no suffix)"
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.settabsuffix.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.settabsuffix.success",
                     "rank" to name,
                     "suffix" to displaySuffix
                 ))
@@ -566,7 +566,7 @@ class Rank(private val radium: Radium) {
     ){
         try {
             if (name.isNullOrEmpty()) {
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setsuffix.usage"))
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setsuffix.usage"))
                 return
             }
 
@@ -576,7 +576,7 @@ class Rank(private val radium: Radium) {
 
             if (success) {
                 val displaySuffix = suffix ?: "null (no suffix)"
-                actor.sendMessage(radium.yamlFactory.getMessageComponent("commands.rank.setsuffix.success",
+                actor.sendMessage(radium.yamlFactory.getMessageComponent("rank.setsuffix.success",
                     "rank" to name,
                     "suffix" to displaySuffix
                 ))

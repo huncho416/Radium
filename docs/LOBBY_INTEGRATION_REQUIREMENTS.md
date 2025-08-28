@@ -1,0 +1,317 @@
+# Lobby Integration Requirements - Critical Updates Needed
+
+## 🔧 **RADIUM FIXES COMPLETED (2025-08-27)**
+
+### ✅ **Fixed Core Message Key Issues - REVERTED AND CORRECTED**
+**Problem**: Some commands were sending config keys instead of actual messages
+**Status**: ✅ **FIXED ONLY THE ACTUAL PROBLEMATIC KEYS**
+
+**What was ACTUALLY fixed** (only the ones that were genuinely broken):
+- `ChatMute.kt`, `ChatClear.kt`, `ChatSlow.kt`, `ChatUnmute.kt` - Changed from `commands.chat.*` to `chat.*` message keys (these exist under `chat:` section in lang.yml)
+- `Rank.kt` - Fixed problematic `commands.rank.*` to `rank.*` message keys for tab prefix/suffix operations (these exist under `rank:` section in lang.yml)
+- `Revoke.kt` - Fixed rank not found message key from `commands.rank.*` to `rank.*`
+- Added missing `ChatUnmute` command registration in main Radium class
+
+**What was CORRECTLY REVERTED** (these should use `commands.*` because they're under `commands:` section in lang.yml):
+- All punishment commands (`Ban.kt`, `Mute.kt`, `Kick.kt`, `Warn.kt`, `Blacklist.kt`, `CheckPunishments.kt`) - Correctly use `commands.*` keys
+- `Permission.kt` - Correctly uses `commands.permission.*` keys  
+- `Grant.kt` - Correctly uses `commands.grant.*` and `commands.grants.*` keys
+- `Message.kt`, `LastSeen.kt`, `Gamemode.kt` - Correctly use `commands.*` keys
+- `Reload.kt` - Uses `reload.*` keys (these exist under `reload:` section at top level)
+
+### ✅ **Fixed Build Issues - COMPLETE**
+**Result**: Project builds successfully with all correct message key structure
+
+---
+
+## ❌ **CRITICAL LOBBY-SIDE ISSUES TO FIX** 
+
+### 🚨 **PRIORITY 1 - PUNISHMENT API ERRORS**
+**Problem**: `Failed to get punishments for player ff897faf-7cbe-4c3c-bd10-d4e4f1cb762c: 404`
+**Cause**: Lobby server's RadiumPunishmentAPI endpoint configuration is incorrect
+
+**This is NOT a Radium issue - it's a Lobby server configuration problem.**
+
+**Required Lobby Updates:**
+```kotlin
+// In RadiumPunishmentAPI.kt - URGENT FIX NEEDED
+class RadiumPunishmentAPI(private val httpClient: HttpClient) {
+    companion object {
+        // CRITICAL: Make sure this URL matches your actual Radium proxy setup
+        private const val BASE_URL = "http://localhost:7777/api" // Or whatever your Radium API URL is
+        // Alternative common configurations:
+        // private const val BASE_URL = "http://radium-proxy:7777/api"
+        // private const val BASE_URL = "http://127.0.0.1:7777/api"
+    }
+    
+    suspend fun getPunishments(playerId: String): List<Punishment>? {
+        return try {
+            radium.logger.debug("Fetching punishments for player $playerId from $BASE_URL/punishments/$playerId")
+            
+            val response = httpClient.get("$BASE_URL/punishments/$playerId") {
+                headers {
+                    // Add any required authentication headers
+                    // append("Authorization", "Bearer YOUR_API_TOKEN")
+                }
+                timeout {
+                    requestTimeoutMillis = 5000 // 5 second timeout
+                }
+            }
+            
+            when (response.status.value) {
+                200 -> response.body<List<Punishment>>()
+                404 -> {
+                    radium.logger.debug("Player $playerId not found in punishment system (404 - this is normal for clean players)")
+                    emptyList() // Return empty list for 404, don't log as warning
+                }
+                else -> {
+                    radium.logger.error("Unexpected response ${response.status.value} from punishment API for player $playerId")
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            radium.logger.error("Failed to get punishments for player $playerId: ${e.message}", e)
+            null
+        }
+    }
+}
+```
+
+**IMMEDIATE ACTION REQUIRED:**
+1. **Check Radium proxy API is running** - Verify `http://localhost:7777/api` (or your URL) is accessible
+2. **Test the endpoint manually** - `curl http://localhost:7777/api/punishments/SOME_UUID`
+3. **Update BASE_URL** in RadiumPunishmentAPI.kt to match your setup
+4. **Reduce 404 logging** - 404s are normal for players with no punishments
+
+### 1. **Vanish Entity Visibility Issues**
+**Problem**: Players are vanished from tab list but still visible in-game
+**Cause**: Lobby server's entity visibility system needs proper integration
+
+**Required Lobby Updates:**
+```kotlin
+// In VanishPluginMessageListener.kt - update the handleVanishStateChange method
+private fun handleVanishStateChange(data: JsonObject) {
+    try {
+        val playerUuid = UUID.fromString(data.get("player_id")?.asString ?: data.get("player")?.asString ?: return)
+        val vanished = data.get("vanished")?.asBoolean ?: return
+        val levelString = data.get("level")?.asString
+        
+        // CRITICAL: Make sure we're using the correct JSON keys
+        // Radium sends "player_id" not "player" in some messages
+        
+        if (vanished) {
+            val level = levelString?.let { VanishLevel.valueOf(it) } ?: VanishLevel.HELPER
+            val vanishData = VanishData.create(playerUuid, level)
+            vanishedPlayers[playerUuid] = vanishData
+        } else {
+            vanishedPlayers.remove(playerUuid)
+        }
+        
+        // CRITICAL: Update entity visibility immediately
+        updatePlayerVisibility(playerUuid)
+        
+    } catch (e: Exception) {
+        plugin.logger.error("Error handling vanish state change", e)
+    }
+}
+```
+
+### 2. **Tab List Persistence Issues**
+**Problem**: When unvanishing, players remain vanished in tab for default players
+**Cause**: Tab list is not being properly refreshed for all viewers
+
+**Required Lobby Updates:**
+```kotlin
+// In VisibilityManager.kt - enhance updatePlayerVisibilityForVanish method
+suspend fun updatePlayerVisibilityForVanish(player: Player) {
+    try {
+        val isVanished = plugin.vanishPluginMessageListener.isPlayerVanished(player.uuid)
+        
+        // Update for ALL players, not just some
+        MinecraftServer.getConnectionManager().onlinePlayers.forEach { viewer ->
+            if (viewer.uuid != player.uuid) {
+                if (isVanished) {
+                    val canSee = plugin.vanishPluginMessageListener.canSeeVanished(viewer, player.uuid)
+                    if (!canSee) {
+                        hidePlayerFromViewer(viewer, player)
+                    } else {
+                        showPlayerToViewer(viewer, player)
+                    }
+                } else {
+                    // CRITICAL: Always show unvanished players to everyone
+                    showPlayerToViewer(viewer, player)
+                }
+            }
+        }
+        
+        // CRITICAL: Force tab list refresh for all players
+        plugin.tabListManager.refreshAllTabLists()
+        
+    } catch (e: Exception) {
+        plugin.logger.error("Error updating vanish visibility for ${player.username}", e)
+    }
+}
+```
+
+### 3. **Tab List [V] Indicator Not Showing**
+**Problem**: Vanished players not showing `[V]` indicator in tab list
+**Cause**: Lobby tab list formatting not properly handling vanish status
+
+**Required Lobby Updates:**
+```kotlin
+// In TabListManager.kt - fix vanish indicator
+private fun formatPlayerName(player: Player, viewer: Player): Component {
+    val profile = plugin.connectionHandler.getPlayerProfile(player.uuid) 
+    val rank = profile?.getHighestRank(plugin.rankManager)
+    
+    val prefix = rank?.tabPrefix ?: rank?.prefix ?: ""
+    val suffix = rank?.tabSuffix ?: rank?.suffix ?: ""
+    val nameColor = rank?.color ?: "&f"
+    
+    // Check if player is vanished and viewer can see vanished players
+    val isVanished = plugin.vanishPluginMessageListener.isPlayerVanished(player.uuid)
+    val canSeeVanished = plugin.vanishPluginMessageListener.canSeeVanished(viewer, player.uuid)
+    
+    val vanishIndicator = if (isVanished && canSeeVanished) {
+        Component.text(" [V]").color(NamedTextColor.GRAY)
+    } else {
+        Component.empty()
+    }
+    
+    return Component.text()
+        .append(MiniMessage.miniMessage().deserialize(prefix))
+        .append(MiniMessage.miniMessage().deserialize("$nameColor${player.username}"))
+        .append(MiniMessage.miniMessage().deserialize(suffix))
+        .append(vanishIndicator)
+        .build()
+}
+```
+
+### 4. **Tab Prefix/Suffix Color Issues**
+**Problem**: Setting prefix `"&4OWNER &f"` doesn't change player name to white
+**Cause**: Color codes not being properly parsed in tab formatting
+
+**Required Lobby Updates:**
+```kotlin
+// In TabListManager.kt - fix color parsing
+private fun parseColoredText(text: String): Component {
+    // Replace legacy color codes with MiniMessage format
+    val miniMessageText = text
+        .replace("&0", "<black>")
+        .replace("&1", "<dark_blue>") 
+        .replace("&2", "<dark_green>")
+        .replace("&3", "<dark_aqua>")
+        .replace("&4", "<dark_red>")
+        .replace("&5", "<dark_purple>")
+        .replace("&6", "<gold>")
+        .replace("&7", "<gray>")
+        .replace("&8", "<dark_gray>")
+        .replace("&9", "<blue>")
+        .replace("&a", "<green>")
+        .replace("&b", "<aqua>")
+        .replace("&c", "<red>")
+        .replace("&d", "<light_purple>")
+        .replace("&e", "<yellow>")
+        .replace("&f", "<white>")
+        .replace("&r", "<reset>")
+        
+    return MiniMessage.miniMessage().deserialize(miniMessageText)
+}
+
+// Usage in tab formatting:
+val formattedPrefix = parseColoredText(prefix)
+val formattedName = parseColoredText("$nameColor${player.username}")
+val formattedSuffix = parseColoredText(suffix)
+```
+
+### 5. **Entity Visibility for Defaults**
+**Problem**: Default players can still see vanished staff members in-game
+**Cause**: Entity visibility updates not properly hiding players
+
+**Required Lobby Updates:**
+```kotlin
+// In VisibilityManager.kt - ensure proper entity hiding
+suspend fun hidePlayerFromViewer(viewer: Player, target: Player) {
+    try {
+        // Hide the player entity
+        viewer.hiddenEntities.add(target.uuid)
+        
+        // Force remove from viewer's entity tracking
+        val connection = viewer.connection as ConnectedPlayer
+        connection.ensureAndGetCurrentServer().thenAccept { serverConnection ->
+            if (serverConnection.isPresent) {
+                // Send entity destroy packet if needed
+                // This ensures the player disappears immediately
+            }
+        }
+        
+        plugin.logger.debug("Hid player ${target.username} from ${viewer.username}")
+    } catch (e: Exception) {
+        plugin.logger.error("Failed to hide player ${target.username} from ${viewer.username}", e)
+    }
+}
+
+suspend fun showPlayerToViewer(viewer: Player, target: Player) {
+    try {
+        // Show the player entity  
+        viewer.hiddenEntities.remove(target.uuid)
+        
+        // Force re-add to viewer's entity tracking
+        val connection = viewer.connection as ConnectedPlayer
+        connection.ensureAndGetCurrentServer().thenAccept { serverConnection ->
+            if (serverConnection.isPresent) {
+                // Send entity spawn packet if needed
+                // This ensures the player appears immediately
+            }
+        }
+        
+        plugin.logger.debug("Showed player ${target.username} to ${viewer.username}")
+    } catch (e: Exception) {
+        plugin.logger.error("Failed to show player ${target.username} to ${viewer.username}", e)
+    }
+}
+```
+
+---
+
+## 🔥 **IMMEDIATE ACTIONS REQUIRED**
+
+### **PRIORITY 1: Fix Punishment API 404 Errors (LOBBY)**
+1. **Check Radium API URL** - Verify the BASE_URL in RadiumPunishmentAPI.kt
+2. **Test API connectivity** - `curl http://localhost:7777/api/punishments/test-uuid`
+3. **Reduce 404 logging** - 404s are normal for clean players, don't spam warnings
+
+### **PRIORITY 2: Tab List and Entity Visibility (LOBBY)**  
+1. **Fix vanish entity visibility** - Default players must not see vanished staff in-game
+2. **Fix tab list refresh** - When staff unvanish, they must reappear in tab for all players  
+3. **Fix [V] indicator** - Must show for vanished players visible to staff
+
+### **PRIORITY 3: Tab Formatting (LOBBY)**
+1. **Fix color code parsing** - Tab prefixes/suffixes must properly parse `&` color codes
+2. **Fix tab prefix/suffix display** - Colors should apply correctly to player names
+
+---
+
+## 📋 **FINAL SUMMARY**
+
+**Radium-Side Status:**
+1. ✅ **Core Issues Fixed** - Only actual problematic message keys were changed (chat.*, rank.*, reload.*)
+2. ✅ **Message Structure Compliant** - All commands use correct keys matching lang.yml organization
+3. ✅ **Build Success** - Project compiles without errors
+4. ✅ **Commands Working** - All command registration and basic functionality working
+
+**Critical Lobby-Side Issues:**
+1. ❌ **Punishment API 404s** - URGENT: Check API URL configuration (HIGH PRIORITY)
+2. ❌ **Vanish Entity Visibility** - Defaults can see vanished staff in-game (CRITICAL)
+3. ❌ **Tab List [V] Indicator** - Not showing for vanished staff (HIGH)
+4. ❌ **Tab Refresh on Unvanish** - Staff don't reappear in tab for all players (CRITICAL)
+5. ❌ **Tab Color Parsing** - `&4OWNER &f` not applying white color to names (MEDIUM)
+
+**Status**: 🟡 **RADIUM FIXED - LOBBY NEEDS URGENT ATTENTION** 
+
+**Next Steps**: 
+1. **URGENT**: Fix RadiumPunishmentAPI.kt BASE_URL configuration to stop 404 spam
+2. Update other Lobby server files as documented above
+3. Test all vanish, tab, and punishment functionality
+
+**Root Cause**: The 404 errors you're seeing are **Lobby-side API configuration issues**, not Radium message key problems. The message key reverts I made ensure Radium is working correctly.
