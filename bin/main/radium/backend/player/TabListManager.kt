@@ -8,9 +8,21 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import radium.backend.Radium
 
 class TabListManager(private val radium: Radium) {
+
+    /**
+     * Converts legacy color codes to Adventure Components
+     */
+    private fun parseColoredText(text: String): Component {
+        return if (text.isBlank()) {
+            Component.empty()
+        } else {
+            LegacyComponentSerializer.legacyAmpersand().deserialize(text)
+        }
+    }
 
     /**
      * Updates the tab list display name for a player
@@ -26,17 +38,19 @@ class TabListManager(private val radium: Radium) {
                 val highestRank = profile.getHighestRank(radium.rankManager)
                 
                 // Use tab-specific prefix if available, otherwise fall back to regular prefix
-                val tabPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
-                val tabSuffix = highestRank?.tabSuffix ?: ""
-                val color = highestRank?.color ?: "&7"
+                val tabPrefix = highestRank?.tabPrefix?.takeIf { it.isNotEmpty() } 
+                    ?: highestRank?.prefix?.takeIf { it.isNotEmpty() } ?: ""
+                val tabSuffix = highestRank?.tabSuffix?.takeIf { it.isNotEmpty() } 
+                    ?: highestRank?.suffix?.takeIf { it.isNotEmpty() } ?: ""
                 
-                // Base tab display format with tab-specific formatting
-                val baseTabDisplayName = radium.yamlFactory.getMessageComponent("tab.player_format",
-                    "prefix" to tabPrefix,
-                    "player" to player.username,
-                    "color" to color,
-                    "suffix" to tabSuffix
-                )
+                radium.logger.debug("Building tab display for ${player.username}: prefix='$tabPrefix', suffix='$tabSuffix'")
+                
+                // Build proper display name with rank formatting using Adventure Components
+                val baseTabDisplayName = Component.text()
+                    .append(parseColoredText(tabPrefix))
+                    .append(Component.text(player.username))
+                    .append(parseColoredText(tabSuffix))
+                    .build()
                 
                 // Update this player's entry in ALL other players' tab lists
                 radium.server.allPlayers.forEach { otherPlayer ->
@@ -53,7 +67,10 @@ class TabListManager(private val radium: Radium) {
                             // Player should be visible - update display name
                             if (tabEntry.isPresent) {
                                 val finalDisplayName = if (isVanished) {
-                                    baseTabDisplayName.append(Component.text(" (V)"))
+                                    Component.text()
+                                        .append(baseTabDisplayName)
+                                        .append(parseColoredText(" &7[V]"))
+                                        .build()
                                 } else {
                                     baseTabDisplayName
                                 }
@@ -71,9 +88,7 @@ class TabListManager(private val radium: Radium) {
             } else {
                 radium.logger.info("No profile found for ${player.username}, using default format")
                 // Fallback if profile not found - just show username in gray
-                val baseDefaultDisplayName = radium.yamlFactory.getMessageComponent("tab.default_format",
-                    "player" to player.username
-                )
+                val baseDefaultDisplayName = parseColoredText("&7${player.username}")
                 
                 // Update this player's entry in ALL other players' tab lists
                 radium.server.allPlayers.forEach { otherPlayer ->
@@ -90,7 +105,10 @@ class TabListManager(private val radium: Radium) {
                             // Player should be visible - update display name
                             if (tabEntry.isPresent) {
                                 val finalDisplayName = if (isVanished) {
-                                    baseDefaultDisplayName.append(Component.text(" (V)"))
+                                    Component.text()
+                                        .append(baseDefaultDisplayName)
+                                        .append(parseColoredText(" &7[V]"))
+                                        .build()
                                 } else {
                                     baseDefaultDisplayName
                                 }

@@ -187,13 +187,17 @@ class NetworkVanishManager(private val radium: Radium) {
                     val highestRank = profile?.getHighestRank(radium.rankManager)
                     
                     // Build proper display name with rank formatting
-                    val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
-                    val rankSuffix = highestRank?.tabSuffix ?: highestRank?.suffix ?: ""
+                    val rankPrefix = highestRank?.tabPrefix?.takeIf { it.isNotEmpty() } 
+                        ?: highestRank?.prefix?.takeIf { it.isNotEmpty() } ?: ""
+                    val rankSuffix = highestRank?.tabSuffix?.takeIf { it.isNotEmpty() } 
+                        ?: highestRank?.suffix?.takeIf { it.isNotEmpty() } ?: ""
+                    
+                    radium.logger.debug("Updating unvanished player ${player.username} tab entry: prefix='$rankPrefix', suffix='$rankSuffix'")
                     
                     val displayName = Component.text()
-                        .append(Component.text(rankPrefix))
+                        .append(parseColoredText(rankPrefix))
                         .append(Component.text(player.username))
-                        .append(Component.text(rankSuffix))
+                        .append(parseColoredText(rankSuffix))
                         .build()
                     
                     existingEntry.get().setDisplayName(displayName)

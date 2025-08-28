@@ -357,6 +357,45 @@ suspend fun showPlayerToViewer(viewer: Player, target: Player) {
 }
 ```
 
+### ✅ **Fixed Legacy Color Code Handling - CRITICAL**
+**Problem**: Legacy color codes causing corrupted characters (∩┐╜4) in tab list and LegacyFormattingDetected errors
+**Status**: ✅ **FIXED WITH PROPER COMPONENT PARSING**
+
+**Root Cause**: 
+- `Component.text(rankPrefix)` was being used with raw color codes like `"&4[Owner] "`
+- Adventure Components don't automatically parse color codes - they treat them as literal text
+- When serialized and sent over network, this caused character encoding corruption
+- Velocity's tab list processing threw LegacyFormattingDetected errors
+
+**Changes Made:**
+1. **Added `parseColoredText()` method to NetworkVanishManager.kt**:
+   - Properly converts legacy color codes (&4, &c, etc.) to Adventure Components
+   - Uses `LegacyComponentSerializer.legacySection().deserialize()` for proper parsing
+   - Returns `Component.empty()` for empty strings to avoid issues
+
+2. **Updated all tab list Component creation**:
+   - Replaced `Component.text(rankPrefix)` with `parseColoredText(rankPrefix)`
+   - Fixed vanish indicator display in tab lists
+   - Fixed rank prefix/suffix display for all players
+
+3. **Enhanced null safety and error prevention**:
+   - Added `takeIf { it.isNotEmpty() }` checks for prefix/suffix values
+   - Added debug logging to track rank data transmission
+   - Added error handling for color code parsing
+
+4. **Added proper imports**:
+   - Imported `LegacyComponentSerializer` in NetworkVanishManager
+   - Ensured proper Adventure API usage throughout
+
+**Key Improvements:**
+- ✅ **Eliminates corrupted characters** in tab list display names
+- ✅ **Prevents LegacyFormattingDetected errors** in Velocity
+- ✅ **Proper color code rendering** for all rank prefixes/suffixes
+- ✅ **Enhanced debugging** for color code issues
+- ✅ **Backward compatibility** maintained with existing rank data
+
+**Critical Fix**: This resolves the `"∩┐╜4[Owner] ∩┐╜4Expenses"` corruption seen in runtime logs.
+
 ---
 
 ## 🔥 **IMMEDIATE ACTIONS REQUIRED**
