@@ -36,7 +36,7 @@ class NetworkVanishManager(private val radium: Radium) {
     /**
      * Set vanish state for a player
      */
-    fun setVanishState(player: Player, vanished: Boolean, level: VanishLevel? = null, vanishedBy: Player? = null, reason: String? = null): Boolean {
+    suspend fun setVanishState(player: Player, vanished: Boolean, level: VanishLevel? = null, vanishedBy: Player? = null, reason: String? = null): Boolean {
         val currentlyVanished = isVanished(player.uniqueId)
         
         if (vanished == currentlyVanished) {
@@ -44,7 +44,7 @@ class NetworkVanishManager(private val radium: Radium) {
         }
         
         if (vanished) {
-            val vanishLevel = level ?: VanishLevel.fromPermissionLevel(player)
+            val vanishLevel = level ?: VanishLevel.fromRankWeight(player, radium)
             val vanishData = VanishData.create(
                 playerId = player.uniqueId,
                 level = vanishLevel,
@@ -63,6 +63,15 @@ class NetworkVanishManager(private val radium: Radium) {
         
         radium.logger.info("Player ${player.username} vanish state changed to: $vanished")
         return true
+    }
+    
+    /**
+     * Set vanish state for a player (convenience method for non-async callers)
+     */
+    fun setVanishStateAsync(player: Player, vanished: Boolean, level: VanishLevel? = null, vanishedBy: Player? = null, reason: String? = null) {
+        radium.scope.launch {
+            setVanishState(player, vanished, level, vanishedBy, reason)
+        }
     }
     
     /**
@@ -89,58 +98,107 @@ class NetworkVanishManager(private val radium: Radium) {
     /**
      * Check if viewer can see a vanished player
      */
-    fun canSeeVanished(viewer: Player, vanishedPlayerId: UUID): Boolean {
+    suspend fun canSeeVanished(viewer: Player, vanishedPlayerId: UUID): Boolean {
         val vanishData = getVanishData(vanishedPlayerId) ?: return true
-        return VanishLevel.canSeeVanished(viewer, vanishData.level)
+        return VanishLevel.canSeeVanished(viewer, vanishData.level, radium)
+    }
+    
+    /**
+     * Check if viewer can see a vanished player (convenience method for non-async callers)
+     */
+    fun canSeeVanishedAsync(viewer: Player, vanishedPlayerId: UUID, callback: (Boolean) -> Unit) {
+        radium.scope.launch {
+            val result = canSeeVanished(viewer, vanishedPlayerId)
+            callback(result)
+        }
     }
     
     /**
      * Hide player from tab list (except for staff who can see them)
      */
-    private fun hideFromTabList(vanishedPlayer: Player, vanishData: VanishData) {
+    private suspend fun hideFromTabList(vanishedPlayer: Player, vanishData: VanishData) {
         radium.server.allPlayers.forEach { viewer ->
             val tabList = viewer.tabList
             
-            if (VanishLevel.canSeeVanished(viewer, vanishData.level)) {
-                // Show with vanish indicator for staff
-                val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
-                val displayName = Component.text()
-                    .append(vanishIndicator)
-                    .append(Component.text(vanishedPlayer.username))
-                    .build()
-                
-                // Update existing entry or create new one
-                val existingEntry = tabList.getEntry(vanishedPlayer.uniqueId)
-                if (existingEntry.isPresent) {
-                    existingEntry.get().setDisplayName(displayName)
-                } else {
-                    // For Velocity, we need to ensure the player appears in the tab list first
-                    // The tab list entry should already exist from Velocity's default behavior
-                    // We just update the display name if missing
-                    radium.logger.warn("Player ${vanishedPlayer.username} missing from ${viewer.username}'s tab list")
-                }
+            if (VanishLevel.canSeeVanished(viewer, vanishData.level, radium)) {
+                // Show with vanish indicator for staff who can see them
+                updateTabListEntryWithVanishIndicator(viewer, vanishedPlayer, vanishData)
             } else {
-                // Remove from tab list for non-staff
+                // Remove from tab list for players who cannot see them
                 tabList.removeEntry(vanishedPlayer.uniqueId)
             }
         }
     }
     
     /**
-     * Show player in tab list for everyone
+     * Update a tab list entry with vanish indicator for staff
      */
-    private fun showInTabList(player: Player) {
-        radium.server.allPlayers.forEach { viewer ->
+    private suspend fun updateTabListEntryWithVanishIndicator(viewer: Player, vanishedPlayer: Player, vanishData: VanishData) {
+        try {
             val tabList = viewer.tabList
+            val existingEntry = tabList.getEntry(vanishedPlayer.uniqueId)
             
-            // Check if entry exists and update it, or create new one
-            val existingEntry = tabList.getEntry(player.uniqueId)
             if (existingEntry.isPresent) {
-                existingEntry.get().setDisplayName(Component.text(player.username))
+                // Wait a moment for rank data to be available
+                kotlinx.coroutines.delay(50)
+                
+                // Get player profile for rank-based formatting
+                val profile = radium.connectionHandler.findPlayerProfile(vanishedPlayer.uniqueId.toString())
+                val highestRank = profile?.getHighestRank(radium.rankManager)
+                
+                // Build display name with vanish indicator and rank prefix
+                val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
+                val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
+                
+                val displayName = Component.text()
+                    .append(vanishIndicator)
+                    .append(Component.text(rankPrefix))
+                    .append(Component.text(vanishedPlayer.username))
+                    .build()
+                
+                existingEntry.get().setDisplayName(displayName)
             } else {
-                // For Velocity, we rely on the TabListManager to properly handle tab entries
-                // We just update the display name for existing entries
-                radium.logger.warn("Player ${player.username} missing from ${viewer.username}'s tab list")
+                radium.logger.debug("Player ${vanishedPlayer.username} missing from ${viewer.username}'s tab list during vanish update")
+            }
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to update tab list entry for vanished player ${vanishedPlayer.username}: ${e.message}")
+        }
+    }
+    
+    /**
+     * Show player in tab list for everyone (refresh tab list properly on unvanish)
+     */
+    private suspend fun showInTabList(player: Player) {
+        // Wait for rank data to be available
+        kotlinx.coroutines.delay(100)
+        
+        radium.server.allPlayers.forEach { viewer ->
+            try {
+                val tabList = viewer.tabList
+                val existingEntry = tabList.getEntry(player.uniqueId)
+                
+                if (existingEntry.isPresent) {
+                    // Get player profile for proper rank-based formatting
+                    val profile = radium.connectionHandler.findPlayerProfile(player.uniqueId.toString())
+                    val highestRank = profile?.getHighestRank(radium.rankManager)
+                    
+                    // Build proper display name with rank formatting
+                    val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
+                    val rankSuffix = highestRank?.tabSuffix ?: highestRank?.suffix ?: ""
+                    
+                    val displayName = Component.text()
+                        .append(Component.text(rankPrefix))
+                        .append(Component.text(player.username))
+                        .append(Component.text(rankSuffix))
+                        .build()
+                    
+                    existingEntry.get().setDisplayName(displayName)
+                    radium.logger.debug("Updated tab list entry for unvanished player ${player.username} for viewer ${viewer.username}")
+                } else {
+                    radium.logger.debug("Player ${player.username} missing from ${viewer.username}'s tab list during unvanish")
+                }
+            } catch (e: Exception) {
+                radium.logger.warn("Failed to update tab list for unvanished player ${player.username} for viewer ${viewer.username}: ${e.message}")
             }
         }
     }
@@ -148,38 +206,77 @@ class NetworkVanishManager(private val radium: Radium) {
     /**
      * Update tab list visibility for all players when a new player joins
      */
-    fun updateTabListForNewPlayer(newPlayer: Player) {
-        val newPlayerTabList = newPlayer.tabList
-        
-        // Add visible players to new player's tab list
-        radium.server.allPlayers.forEach { existingPlayer ->
-            if (existingPlayer.uniqueId == newPlayer.uniqueId) return@forEach
+    suspend fun updateTabListForNewPlayer(newPlayer: Player) {
+        try {
+            // Wait for rank data to be available
+            kotlinx.coroutines.delay(150)
             
-            val vanishData = getVanishData(existingPlayer.uniqueId)
-            if (vanishData == null || VanishLevel.canSeeVanished(newPlayer, vanishData.level)) {
-                val displayName = if (vanishData != null && VanishLevel.canSeeVanished(newPlayer, vanishData.level)) {
-                    val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
-                    Component.text()
-                        .append(vanishIndicator)
-                        .append(Component.text(existingPlayer.username))
-                        .build()
-                } else {
-                    Component.text(existingPlayer.username)
-                }
+            val newPlayerTabList = newPlayer.tabList
+            
+            // Add visible players to new player's tab list
+            radium.server.allPlayers.forEach { existingPlayer ->
+                if (existingPlayer.uniqueId == newPlayer.uniqueId) return@forEach
                 
-                // For Velocity, tab list entries are automatically managed
-                // We just need to update display names for existing entries
-                val existingEntry = newPlayerTabList.getEntry(existingPlayer.uniqueId)
-                if (existingEntry.isPresent) {
-                    existingEntry.get().setDisplayName(displayName)
+                try {
+                    val vanishData = getVanishData(existingPlayer.uniqueId)
+                    if (vanishData == null || VanishLevel.canSeeVanished(newPlayer, vanishData.level, radium)) {
+                        val existingEntry = newPlayerTabList.getEntry(existingPlayer.uniqueId)
+                        if (existingEntry.isPresent) {
+                            val displayName = if (vanishData != null && VanishLevel.canSeeVanished(newPlayer, vanishData.level, radium)) {
+                                // Show with vanish indicator for staff
+                                val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
+                                val profile = radium.connectionHandler.findPlayerProfile(existingPlayer.uniqueId.toString())
+                                val highestRank = profile?.getHighestRank(radium.rankManager)
+                                val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
+                                
+                                Component.text()
+                                    .append(vanishIndicator)
+                                    .append(Component.text(rankPrefix))
+                                    .append(Component.text(existingPlayer.username))
+                                    .build()
+                            } else {
+                                // Show normally with rank formatting
+                                val profile = radium.connectionHandler.findPlayerProfile(existingPlayer.uniqueId.toString())
+                                val highestRank = profile?.getHighestRank(radium.rankManager)
+                                val rankPrefix = highestRank?.tabPrefix ?: highestRank?.prefix ?: ""
+                                val rankSuffix = highestRank?.tabSuffix ?: highestRank?.suffix ?: ""
+                                
+                                Component.text()
+                                    .append(Component.text(rankPrefix))
+                                    .append(Component.text(existingPlayer.username))
+                                    .append(Component.text(rankSuffix))
+                                    .build()
+                            }
+                            
+                            existingEntry.get().setDisplayName(displayName)
+                        }
+                    }
+                } catch (e: Exception) {
+                    radium.logger.warn("Failed to update tab entry for existing player ${existingPlayer.username} for new player ${newPlayer.username}: ${e.message}")
                 }
             }
+            
+            // Update other players' tab lists if new player is vanished
+            val newPlayerVanishData = getVanishData(newPlayer.uniqueId)
+            if (newPlayerVanishData != null) {
+                hideFromTabList(newPlayer, newPlayerVanishData)
+            }
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to update tab list for new player ${newPlayer.username}: ${e.message}")
         }
-        
-        // Update other players' tab lists if new player is vanished
-        val newPlayerVanishData = getVanishData(newPlayer.uniqueId)
-        if (newPlayerVanishData != null) {
-            hideFromTabList(newPlayer, newPlayerVanishData)
+    }
+    
+    /**
+     * Refresh tab list for all players (useful for manual refresh)
+     */
+    suspend fun refreshAllTabLists() {
+        try {
+            radium.server.allPlayers.forEach { player ->
+                updateTabListForNewPlayer(player)
+            }
+            radium.logger.info("Refreshed tab lists for all players")
+        } catch (e: Exception) {
+            radium.logger.warn("Failed to refresh all tab lists: ${e.message}")
         }
     }
     
@@ -268,7 +365,7 @@ class NetworkVanishManager(private val radium: Radium) {
                 "player_id" to playerId.toString(),
                 "player_name" to player.username,
                 "vanished" to true,
-                "level" to vanishData.level.level
+                "level" to vanishData.level.minWeight
             )
             
             val jsonString = com.google.gson.Gson().toJson(jsonMessage)
@@ -290,7 +387,7 @@ class NetworkVanishManager(private val radium: Radium) {
     fun onInitialServerConnect(event: PlayerChooseInitialServerEvent) {
         // Update tab list for the new player after a short delay
         radium.scope.launch {
-            delay(100) // Wait for player to fully connect
+            delay(200) // Wait for player to fully connect and rank data to be available
             val player = event.player
             updateTabListForNewPlayer(player)
         }

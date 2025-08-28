@@ -1,6 +1,37 @@
 # Lobby Integration Requirements - Critical Updates Needed
 
-## 🔧 **RADIUM FIXES COMPLETED (2025-08-27)**
+## 🔧 **RADIUM FIXES COMPLETED (2025-08-27) - UPDATED**
+
+### ✅ **Fixed Vanish Logic and Tab List Management**
+**Problem**: Inconsistent vanish visibility logic between rank weight and permission systems
+**Status**: ✅ **FIXED WITH RANK WEIGHT STANDARDIZATION**
+
+**Changes Made:**
+
+1. **Standardized VanishLevel.kt to use rank weight system**:
+   - Changed from permission-level based (level 1-4) to rank weight based (minWeight: 10, 50, 100, 1000)
+   - Added `fromRankWeight()` method that uses player's actual rank weight
+   - Added async `canSeeVanished()` method that properly checks rank weights
+   - Kept fallback permission-based methods for backward compatibility
+
+2. **Enhanced NetworkVanishManager.kt for proper tab list handling**:
+   - Made `setVanishState()` method async (suspend) to handle rank data fetching
+   - Updated `hideFromTabList()` and `showInTabList()` methods to use rank data for proper formatting
+   - Added delays to wait for rank data before applying tab formatting
+   - Enhanced `updateTabListForNewPlayer()` to properly format tab entries with rank prefixes/suffixes
+   - Added convenience methods `setVanishStateAsync()` and `canSeeVanishedAsync()` for non-async callers
+   - Added `refreshAllTabLists()` method for manual refresh capability
+
+3. **Updated command usage to use async methods**:
+   - Modified `StaffManager.kt` auto-vanish and vanish toggle to use async methods
+   - Updated `Vanish.kt` command to use async vanish state changes
+   - Removed unnecessary success/failure checking since async methods handle errors internally
+
+**Key Improvements:**
+- Vanish visibility now properly uses rank weight comparison (higher weight can see lower weight vanished players)
+- Tab list properly refreshes when players unvanish (fixes disappearing issue)
+- Tab formatting now waits for rank data before applying prefixes/suffixes
+- Enhanced error handling and logging for debugging
 
 ### ✅ **Fixed Core Message Key Issues - REVERTED AND CORRECTED**
 **Problem**: Some commands were sending config keys instead of actual messages
@@ -20,7 +51,7 @@
 - `Reload.kt` - Uses `reload.*` keys (these exist under `reload:` section at top level)
 
 ### ✅ **Fixed Build Issues - COMPLETE**
-**Result**: Project builds successfully with all correct message key structure
+**Result**: Project builds successfully with all vanish logic and message key improvements
 
 ---
 

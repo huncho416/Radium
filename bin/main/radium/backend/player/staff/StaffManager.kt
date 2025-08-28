@@ -50,8 +50,8 @@ class StaffManager(private val radium: Radium) {
         val autoVanishEnabled = profile?.getSetting("autoVanish")?.toBoolean() ?: false
 
         if (autoVanishEnabled) {
-            // Auto-vanish the staff member
-            radium.networkVanishManager.setVanishState(player, true)
+            // Auto-vanish the staff member using async method
+            radium.networkVanishManager.setVanishStateAsync(player, true)
             radium.logger.debug("Auto-vanished ${player.username} on staff join")
         }
     }
@@ -128,7 +128,7 @@ class StaffManager(private val radium: Radium) {
         val currentlyVanished = isVanished(player)
         val newState = !currentlyVanished
         
-        radium.networkVanishManager.setVanishState(player, newState)
+        radium.networkVanishManager.setVanishStateAsync(player, newState)
         return newState
     }
 

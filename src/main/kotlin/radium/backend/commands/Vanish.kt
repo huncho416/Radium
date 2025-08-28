@@ -23,16 +23,14 @@ class Vanish(private val radium: Radium) {
         val isCurrentlyVanished = vanishManager.isVanished(actor.uniqueId)
         val newState = !isCurrentlyVanished
         
-        val success = vanishManager.setVanishState(actor, newState)
+        // Use async method since it's now suspend
+        vanishManager.setVanishStateAsync(actor, newState)
         
-        if (success) {
-            if (newState) {
-                actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_vanished"))
-            } else {
-                actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_visible"))
-            }
+        // Send immediate feedback
+        if (newState) {
+            actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_vanished"))
         } else {
-            actor.sendMessage(Component.text("Vanish state unchanged.", NamedTextColor.YELLOW))
+            actor.sendMessage(yamlFactory.getMessageComponent("vanish.now_visible"))
         }
     }
 
@@ -55,21 +53,19 @@ class Vanish(private val radium: Radium) {
             }
         }
         
-        val success = vanishManager.setVanishState(target, newState, vanishedBy = actor)
+        // Use async method since it's now suspend
+        vanishManager.setVanishStateAsync(target, newState, vanishedBy = actor)
         
-        if (success) {
-            val stateText = if (newState) "vanished" else "visible"
-            actor.sendMessage(Component.text("${target.username} is now $stateText.", NamedTextColor.GREEN))
-            
-            if (target.uniqueId != actor.uniqueId) {
-                if (newState) {
-                    target.sendMessage(yamlFactory.getMessageComponent("vanish.vanished_by_staff", "staff" to actor.username))
-                } else {
-                    target.sendMessage(yamlFactory.getMessageComponent("vanish.unvanished_by_staff", "staff" to actor.username))
-                }
+        // Send immediate feedback
+        val stateText = if (newState) "vanished" else "visible"
+        actor.sendMessage(Component.text("${target.username} is now $stateText.", NamedTextColor.GREEN))
+        
+        if (target.uniqueId != actor.uniqueId) {
+            if (newState) {
+                target.sendMessage(yamlFactory.getMessageComponent("vanish.vanished_by_staff", "staff" to actor.username))
+            } else {
+                target.sendMessage(yamlFactory.getMessageComponent("vanish.unvanished_by_staff", "staff" to actor.username))
             }
-        } else {
-            actor.sendMessage(Component.text("Vanish state unchanged.", NamedTextColor.YELLOW))
         }
     }
 
