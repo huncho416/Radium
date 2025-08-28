@@ -161,12 +161,19 @@ class ProxyCommunicationManager(
                 if (profile != null) {
                     val highestRank = profile.getHighestRank(plugin.rankManager)
                     if (highestRank != null) {
+                        // Debug logging to check for encoding issues
+                        plugin.logger.debug("Sending rank data for $playerName: rank=${highestRank.name}, prefix='${highestRank.prefix}', color='${highestRank.color}'")
+                        
                         addProperty("rank", highestRank.name)
                         addProperty("rankWeight", highestRank.weight)
                         addProperty("prefix", highestRank.prefix)
                         addProperty("color", highestRank.color)
                         add("permissions", gson.toJsonTree(highestRank.permissions))
+                    } else {
+                        plugin.logger.debug("No rank found for player $playerName, using defaults")
                     }
+                } else {
+                    plugin.logger.debug("No profile found for player $playerName")
                 }
             }
             publishResponse("radium:player:profile:response", response.toString())

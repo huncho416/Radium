@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import radium.backend.Radium
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -148,11 +149,14 @@ class NetworkVanishManager(private val radium: Radium) {
                 
                 // Build display name with vanish indicator and rank prefix
                 val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
-                val rankPrefix = effectiveRank?.tabPrefix ?: effectiveRank?.prefix ?: ""
+                val rankPrefix = effectiveRank?.tabPrefix?.takeIf { it.isNotEmpty() } 
+                    ?: effectiveRank?.prefix?.takeIf { it.isNotEmpty() } ?: ""
+                
+                radium.logger.debug("Updating vanished player ${vanishedPlayer.username} tab entry: prefix='$rankPrefix'")
                 
                 val displayName = Component.text()
                     .append(vanishIndicator)
-                    .append(Component.text(rankPrefix))
+                    .append(parseColoredText(rankPrefix))
                     .append(Component.text(vanishedPlayer.username))
                     .build()
                 
@@ -227,24 +231,27 @@ class NetworkVanishManager(private val radium: Radium) {
                                 val vanishIndicator = radium.yamlFactory.getMessageComponent("vanish.tablist_indicator")
                                 val profile = radium.connectionHandler.findPlayerProfile(existingPlayer.uniqueId.toString())
                                 val effectiveRank = profile?.getEffectiveRank(radium.rankManager)
-                                val rankPrefix = effectiveRank?.tabPrefix ?: effectiveRank?.prefix ?: ""
+                                val rankPrefix = effectiveRank?.tabPrefix?.takeIf { it.isNotEmpty() } 
+                                    ?: effectiveRank?.prefix?.takeIf { it.isNotEmpty() } ?: ""
                                 
                                 Component.text()
                                     .append(vanishIndicator)
-                                    .append(Component.text(rankPrefix))
+                                    .append(parseColoredText(rankPrefix))
                                     .append(Component.text(existingPlayer.username))
                                     .build()
                             } else {
                                 // Show normally with rank formatting
                                 val profile = radium.connectionHandler.findPlayerProfile(existingPlayer.uniqueId.toString())
                                 val effectiveRank = profile?.getEffectiveRank(radium.rankManager)
-                                val rankPrefix = effectiveRank?.tabPrefix ?: effectiveRank?.prefix ?: ""
-                                val rankSuffix = effectiveRank?.tabSuffix ?: effectiveRank?.suffix ?: ""
+                                val rankPrefix = effectiveRank?.tabPrefix?.takeIf { it.isNotEmpty() } 
+                                    ?: effectiveRank?.prefix?.takeIf { it.isNotEmpty() } ?: ""
+                                val rankSuffix = effectiveRank?.tabSuffix?.takeIf { it.isNotEmpty() } 
+                                    ?: effectiveRank?.suffix?.takeIf { it.isNotEmpty() } ?: ""
                                 
                                 Component.text()
-                                    .append(Component.text(rankPrefix))
+                                    .append(parseColoredText(rankPrefix))
                                     .append(Component.text(existingPlayer.username))
-                                    .append(Component.text(rankSuffix))
+                                    .append(parseColoredText(rankSuffix))
                                     .build()
                             }
                             
@@ -411,5 +418,18 @@ class NetworkVanishManager(private val radium: Radium) {
     fun initialize() {
         startUpdateBatcher()
         radium.logger.info("NetworkVanishManager initialized successfully")
+    }
+    
+    /**
+     * Convert legacy color codes to proper Adventure Component
+     */
+    private fun parseColoredText(text: String): Component {
+        return if (text.isEmpty()) {
+            Component.empty()
+        } else {
+            // Convert & codes to § codes, then parse with LegacyComponentSerializer
+            val legacyText = text.replace('&', '§')
+            LegacyComponentSerializer.legacySection().deserialize(legacyText)
+        }
     }
 }
