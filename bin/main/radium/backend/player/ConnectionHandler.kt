@@ -513,4 +513,25 @@ class ConnectionHandler(private val radium: Radium) {
         
         // radium.logger.debug("${profile.username} permissions saved to database and cache, notification sent to other servers")
     }
+
+    @Subscribe
+    fun onChooseInitialServer(event: PlayerChooseInitialServerEvent) {
+        val player = event.player
+        
+        // Check if the lobby server is configured
+        val lobbyServer = radium.server.getServer("lobby")
+        
+        if (lobbyServer.isPresent) {
+            val serverInfo = lobbyServer.get()
+            event.setInitialServer(serverInfo)
+            
+            // Log connection attempt cleanly (Velocity will still show connection errors if server is down)
+            radium.logger.debug("Directing ${player.username} to lobby server")
+        } else {
+            // No lobby server configured - disconnect with clean message
+            player.disconnect(Component.text("Lobby server is currently unavailable. Please try again later.")
+                .color(NamedTextColor.RED))
+            radium.logger.info("No lobby server configured - disconnected ${player.username}")
+        }
+    }
 }
