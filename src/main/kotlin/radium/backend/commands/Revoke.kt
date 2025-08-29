@@ -66,14 +66,14 @@ class Revoke(private val radium: Radium) {
                 val targetPlayer = radium.server.getPlayer(target).orElse(null)
                 if (targetPlayer != null) {
                     // radium.logger.debug("Updating tab list for online player: ${targetPlayer.username}")
-                    radium.tabListManager.updatePlayerTabList(targetPlayer)
+                    radium.networkVanishManager.updateTabListForNewPlayer(targetPlayer)
                 } else {
                     radium.logger.info("Target player '$target' is not online, skipping individual update")
                 }
                 
                 // Then update all players' tab lists to ensure consistency
                 radium.logger.info("Updating all players' tab lists")
-                radium.tabListManager.updateAllPlayersTabList()
+                radium.networkVanishManager.refreshAllTabLists()
             }
 
             // Log the change

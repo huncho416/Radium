@@ -99,7 +99,7 @@ class Grant(private val radium: Radium) {
         
         // Update tab lists for all players to reflect rank changes
         GlobalScope.launch {
-            radium.tabListManager.updateAllPlayersTabList()
+            radium.networkVanishManager.refreshAllTabLists()
         }
     }
 

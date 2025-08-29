@@ -164,10 +164,19 @@ class ProxyCommunicationManager(
                         // Debug logging to check for encoding issues
                         plugin.logger.debug("Sending rank data for $playerName: rank=${highestRank.name}, prefix='${highestRank.prefix}', color='${highestRank.color}'")
                         
+                        // Ensure safe transmission of color codes through Redis
+                        // Convert & codes to a safe format that won't cause encoding issues
+                        val safePrefix = highestRank.prefix.replace("&", "%%AMP%%")
+                        val safeColor = highestRank.color.replace("&", "%%AMP%%")
+                        val safeTabPrefix = highestRank.tabPrefix?.replace("&", "%%AMP%%")
+                        val safeTabSuffix = highestRank.tabSuffix?.replace("&", "%%AMP%%")
+                        
                         addProperty("rank", highestRank.name)
                         addProperty("rankWeight", highestRank.weight)
-                        addProperty("prefix", highestRank.prefix)
-                        addProperty("color", highestRank.color)
+                        addProperty("prefix", safePrefix)
+                        addProperty("color", safeColor)
+                        addProperty("tabPrefix", safeTabPrefix ?: safePrefix)
+                        addProperty("tabSuffix", safeTabSuffix ?: "")
                         add("permissions", gson.toJsonTree(highestRank.permissions))
                     } else {
                         plugin.logger.debug("No rank found for player $playerName, using defaults")

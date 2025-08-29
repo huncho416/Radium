@@ -184,7 +184,7 @@ class Rank(private val radium: Radium) {
                 
                 // Update tab lists for all players with this rank
                 GlobalScope.launch {
-                    radium.tabListManager.updateAllPlayersTabList()
+                    radium.networkVanishManager.refreshAllTabLists()
                 }
             } else {
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
@@ -505,7 +505,7 @@ class Rank(private val radium: Radium) {
                 
                 // Update tab lists for all players with this rank
                 GlobalScope.launch {
-                    radium.tabListManager.updateAllPlayersTabList()
+                    radium.networkVanishManager.refreshAllTabLists()
                 }
             } else {
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))
@@ -544,7 +544,7 @@ class Rank(private val radium: Radium) {
                 
                 // Update tab lists for all players with this rank
                 GlobalScope.launch {
-                    radium.tabListManager.updateAllPlayersTabList()
+                    radium.networkVanishManager.refreshAllTabLists()
                 }
             } else {
                 actor.sendMessage(radium.yamlFactory.getMessageComponent("general.rank_not_found", "rank" to name))

@@ -293,7 +293,9 @@ class Radium @Inject constructor(
         server.eventManager.register(this, connectionHandler)
         server.eventManager.register(this, staffManager)
         server.eventManager.register(this, chatManager)
-        server.eventManager.register(this, tabListManager)
+        // Note: TabListManager event registration disabled to prevent conflicts with NetworkVanishManager
+        // TabListManager is still available for manual updates when needed
+        // server.eventManager.register(this, tabListManager)
         server.eventManager.register(this, networkVanishManager)
         
         // Register punishment event listener

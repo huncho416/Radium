@@ -396,6 +396,28 @@ suspend fun showPlayerToViewer(viewer: Player, target: Player) {
 
 **Critical Fix**: This resolves the `"∩┐╜4[Owner] ∩┐╜4Expenses"` corruption seen in runtime logs.
 
+### ✅ **Fixed Legacy Color Code Transmission Issues**
+**Problem**: Legacy color codes in rank data transmitted through Redis causing encoding corruption and LegacyFormattingDetected errors
+**Status**: ✅ **FIXED WITH SAFE ENCODING**
+
+**Changes Made:**
+1. **Updated ProxyCommunicationManager.kt Redis transmission**:
+   - Added safe encoding for rank prefix and color data sent through Redis
+   - Converts `&` color codes to `%%AMP%%` to prevent encoding corruption
+   - Added transmission of tabPrefix and tabSuffix data for complete rank formatting
+   - Enhanced debug logging for rank data transmission
+
+2. **Fixed TabListManager.kt legacy formatting**:
+   - Added `parseColoredText()` helper using `LegacyComponentSerializer`
+   - Replaced template-based formatting with proper Adventure Component building
+   - Fixed both ranked player and default player tab display formatting
+   - Updated vanish indicator to use proper color parsing
+
+**Backend Integration Required:**
+- Backend servers must convert `%%AMP%%` back to `&` when processing received rank data
+- Example: `"%%AMP%%4[Owner] %%AMP%%4"` should become `"&4[Owner] &4"`
+- This prevents encoding corruption during Redis transmission
+
 ---
 
 ## 🔥 **IMMEDIATE ACTIONS REQUIRED**

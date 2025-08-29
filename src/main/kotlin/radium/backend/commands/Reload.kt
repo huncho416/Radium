@@ -18,7 +18,8 @@ class Reload(private val radium: Radium) {
             
             // Update tab lists for all players
             radium.scope.launch {
-                radium.tabListManager.updateAllPlayersTabList()
+                // Refresh tab lists to reflect any changes
+                radium.networkVanishManager.refreshAllTabLists()
             }
             
             actor.sendMessage(radium.yamlFactory.getMessageComponent("reload.success"))
